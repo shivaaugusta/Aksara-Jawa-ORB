@@ -1,4 +1,4 @@
-# app.py (Final Deployment Version - Clean and Complete)
+# app.py (Final Deployment Version - Menampilkan CM Mentah 20x20)
 
 import streamlit as st
 import cv2
@@ -196,27 +196,57 @@ with col_right:
             else:
                  st.warning("⚠️ Gagal mengekstrak fitur ORB.")
 
-            # --- TAMPILAN CONFUSION MATRIX (VISUALISASI) ---
+            # --- TAMPILAN CONFUSION MATRIX (CM) ---
             st.markdown("---")
             st.subheader("Evaluasi Penuh: Confusion Matrix & Metrik")
-
-            # Data Metrik Rata-Rata (diambil dari hasil Anda)
-            metrik_data_visual = {
-                'Metric': ['Precision', 'Recall', 'F1-Score'],
-                'Value': [0.33, 0.33, 0.325] 
-            }
-            df_visual = pd.DataFrame(metrik_data_visual).set_index('Metric')
-
-            # Tampilkan Visualisasi Bar Chart
-            st.markdown("""
-            #### 📊 Perbandingan Metrik Kinerja Rata-Rata
-            Metrik berikut adalah nilai rata-rata yang dihitung dari Confusion Matrix (CM) 20x20.
-            """)
-            st.bar_chart(df_visual) 
             
-            # Tambahkan akurasi total di bawah chart (untuk memenuhi target dosen)
-            st.markdown(f"**Akurasi Total (Dihitung dari CM):** {ACCURACY_REPORTED:.2f}%")
+            # --- DEFINISI DATA CM STATIS 20x20 (Diambil dari hasil 39.68%) ---
+            cm_labels = list(LABEL_MAP.keys()) 
+            cm_data_39_68 = [
+                [ 4,  0,  0,  0,  0,  1,  0,  3,  0,  0,  0,  0,  8,  0,  0,  1,  0,  0,  0,  2], 
+                [ 0, 12,  0,  0,  0,  0,  0,  2,  0,  0,  0,  0,  0,  0,  0,  4,  0,  0,  1,  0], 
+                [ 0,  0, 14,  0,  0,  0,  0,  4,  0,  0,  0,  0,  0,  0,  0,  1,  0,  0,  0,  0], 
+                [ 0,  0,  0, 14,  0,  0,  0,  1,  0,  2,  0,  0,  0,  0,  0,  1,  0,  0,  1,  0], 
+                [ 2,  0,  0,  0,  1,  1,  0,  8,  0,  1,  0,  0,  1,  0,  0,  4,  0,  0,  0,  1], 
+                [ 1,  0,  0,  0,  0,  4,  0,  4,  1,  0,  0,  0,  0,  0,  0,  9,  0,  0,  0,  0], 
+                [ 0,  0,  0,  0,  0,  0,  9,  2,  0,  0,  0,  0,  0,  0,  0,  6,  0,  0,  1,  0], 
+                [ 0,  0,  0,  0,  0,  0,  0, 17,  0,  0,  1,  0,  1,  0,  0,  0,  0,  0,  0,  0], 
+                [ 0,  0,  0,  0,  0,  3,  0,  7,  3,  0,  2,  0,  0,  0,  0,  2,  0,  0,  0,  2], 
+                [ 0,  1,  0,  1,  0,  0,  0,  0,  1,  9,  0,  0,  0,  1,  0,  4,  0,  0,  2,  1], 
+                [ 0,  0,  0,  0,  0,  0,  0, 16,  0,  0,  3,  0,  0,  0,  0,  0,  0,  0,  0,  0], 
+                [ 5,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  7,  2,  0,  0,  3,  0,  1,  0,  1], 
+                [ 0,  1,  0,  0,  0,  0,  0,  4,  0,  0,  0,  1, 11,  0,  0,  2,  0,  0,  0,  0], 
+                [ 0,  0,  0,  0,  0,  1,  0,  4,  0,  0,  0,  0,  0,  0,  0, 13,  0,  0,  0,  1], 
+                [ 3,  2,  0,  0,  0,  1,  0,  2,  0,  3,  0,  0,  2,  0,  0,  4,  0,  0,  2,  0], 
+                [ 0,  4,  0,  0,  0,  0,  0,  1,  0,  0,  0,  0,  0,  0,  0, 13,  0,  0,  0,  1], 
+                [ 0,  0,  0,  0,  0,  0,  0,  6,  0,  0,  0,  0,  0,  1,  0,  5,  6,  0,  1,  0], 
+                [ 0,  3,  1,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  3,  0, 10,  0,  1], 
+                [ 0,  0,  0,  0,  0,  0,  0,  3,  0,  0,  0,  0,  0,  1,  0,  7,  0,  0,  8,  0], 
+                [ 0,  0,  0,  1,  0,  2,  1,  2,  1,  0,  0,  0,  0,  1,  0,  5,  0,  0,  1,  5]
+            ]
+            
+            cm_df = pd.DataFrame(data=np.array(cm_data_39_68), columns=cm_labels)
+            cm_df.insert(0, 'GT \ Pred', cm_labels) # Tambahkan kolom Ground Truth (GT)
 
+            st.markdown("""
+            #### 📊 Confusion Matrix (CM) Mentah 20x20
+            Angka-angka di bawah ini adalah hasil evaluasi penuh model pada data test:
+            """)
+            
+            st.dataframe(cm_df) # Tampilkan tabel CM
+
+            # Menampilkan Metrik Ringkas
+            st.markdown("---")
+            st.subheader("Ringkasan Metrik Kinerja")
+            
+            st.metric(label="Akurasi Model Test (Offline)", value=f"{ACCURACY_REPORTED:.2f}%", delta="Target Dosen: >80%", delta_color="inverse")
+            
+            metrik_data = {
+                'Metric': ['Average Precision', 'Average Recall', 'F1-Score'],
+                'Value': [f"{33.00:.2f}%", f"{33.00:.2f}%", f"{32.50:.2f}%"] 
+            }
+            df_metrik = pd.DataFrame(metrik_data)
+            st.table(df_metrik) 
 
         except Exception as e:
             st.error(f"Terjadi kesalahan saat memproses gambar: {e}")
