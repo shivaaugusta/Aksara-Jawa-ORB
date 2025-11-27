@@ -175,12 +175,39 @@ with col_right:
 
                 # --- TAMPILAN TOP MATCHES DETAIL ---
                 st.subheader("Top Matches Detail")
-                
-                df = pd.DataFrame(top_matches)
-                df['label'] = df['label_id'].apply(lambda x: ID_TO_LABEL[x])
-                df = df.drop(columns=['label_id']).rename(columns={'score': 'good_matches', 'label': 'label'})
-                df.index += 1
-                df.index.name = 'Rank'
+
+if len(top_matches) > 0:
+    st.markdown(f"**Prediksi Terbaik (Rank 1): {final_prediction.upper()}**")
+    
+    # 1. Konversi ke DataFrame untuk tampilan data
+    df = pd.DataFrame(top_matches)
+    df['label'] = df['label_id'].apply(lambda x: ID_TO_LABEL[x])
+    df = df.drop(columns=['label_id']).rename(columns={'score': 'Good Matches', 'label': 'Label'})
+    df.index += 1
+    
+    # 2. Tampilkan Detail dalam Bentuk Kartu/Kolom
+    st.markdown("---")
+    
+    # Batasi untuk 5 kolom (untuk thumbnail visual)
+    cols = st.columns(len(top_matches)) 
+    
+    for i, row in df.iterrows():
+        # Memisahkan output ke setiap kolom (thumbnail)
+        with cols[i-1]:
+            st.markdown(f"**Rank {row.name}**")
+            st.markdown(f"**{row['Label'].upper()}**")
+            st.caption(f"Score: {row['Good Matches']} matches")
+            
+            # Placeholder Visual (Pengganti Gambar)
+            if row.name == 1:
+                st.image(preprocessed_cv, caption="Best Match Preview", use_column_width=True)
+            else:
+                st.markdown("*(Thumbnail Gambar Training tidak tersedia di Cloud)*")
+
+
+# 3. Tampilkan Dataframe di bagian bawah (opsional, untuk kelengkapan)
+st.markdown("### Data Matching Lengkap")
+st.dataframe(df)
                 
                 st.dataframe(df) # TABEL SEBAGAI PENGGANTI THUMBNAILS
                 
