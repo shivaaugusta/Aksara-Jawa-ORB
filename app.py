@@ -256,16 +256,7 @@ with col_right:
             
             st.dataframe(cm_df) # Tampilkan tabel CM
 
-            # Menampilkan Metrik Ringkas
-            st.markdown("---")
-            st.subheader("Ringkasan Metrik Kinerja")
             
-            st.metric(label="Akurasi Model Test (Offline)", value=f"{ACCURACY_REPORTED:.2f}%", delta="Target Dosen: >80%", delta_color="inverse")
-            
-            metrik_data = {
-                'Metric': ['Average Precision', 'Average Recall', 'F1-Score'],
-                'Value': [f"{33.00:.2f}%", f"{33.00:.2f}%", f"{32.50:.2f}%"] 
-            }
             df_metrik = pd.DataFrame(metrik_data)
             st.table(df_metrik) 
 
