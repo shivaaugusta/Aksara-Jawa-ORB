@@ -228,6 +228,15 @@ with col_right:
             cm_df = pd.DataFrame(data=np.array(cm_data_39_68), columns=cm_labels)
             cm_df.insert(0, 'GT \ Pred', cm_labels) # Tambahkan kolom Ground Truth (GT)
 
+            st.markdown("""
+            #### 📊 Confusion Matrix (CM) Mentah 20x20
+            Angka-angka di bawah ini adalah hasil evaluasi penuh model pada data test:
+            """)
+            
+            st.dataframe(cm_df) # Tampilkan tabel CM
+
+            
+
         except Exception as e:
             st.error(f"Terjadi kesalahan saat memproses gambar: {e}")
 
