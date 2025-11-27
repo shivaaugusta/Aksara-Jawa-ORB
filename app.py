@@ -6,11 +6,10 @@ import numpy as np
 import pickle
 import json
 import os
-import gzip # Diperlukan untuk membaca file terkompresi
+import gzip 
 from PIL import Image
 
 # --- 1. KONFIGURASI DAN LOAD MODEL ---
-# NAMA FILE WAJIB MENCANTUMKAN .gz
 INDEX_FILE = "orb_index.pkl.gz" 
 LABEL_FILE = "label_map.json"
 ORB_N_FEATURES = 250
@@ -38,7 +37,6 @@ def load_resources():
     except FileNotFoundError:
         return None, None, None, None, None
     except Exception as e:
-        # Menangkap error jika load gagal karena format atau data corrupted
         return None, None, None, None, None
 
 ORB_INDEX, LABEL_MAP, ID_TO_LABEL, ORB, BF_KNN = load_resources()
@@ -46,13 +44,11 @@ ORB_INDEX, LABEL_MAP, ID_TO_LABEL, ORB, BF_KNN = load_resources()
 # --- 2. UTILITY FUNCTIONS (Disesuaikan dari Notebook) ---
 
 def pil_to_cv2_gray(pil_img):
-    # Mengubah gambar PIL menjadi Grayscale OpenCV
     rgb_img = np.array(pil_img.convert('RGB'))[:, :, ::-1]
     gray = cv2.cvtColor(rgb_img, cv2.COLOR_BGR2GRAY)
     return gray.astype(np.uint8)
 
 def deskew(image):
-    # Fungsi Deskew 
     coords = np.column_stack(np.where(image > 0))
     if len(coords) < 10: return image
     angle = cv2.minAreaRect(coords)[-1]
@@ -64,7 +60,6 @@ def deskew(image):
     return rotated
 
 def preprocess_image(pil_img):
-    # Melakukan Preprocessing lengkap
     img = pil_to_cv2_gray(pil_img)
     blur = cv2.GaussianBlur(img, (3, 3), 0)
     th = cv2.adaptiveThreshold(blur, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY_INV, 25, 10)
@@ -73,14 +68,12 @@ def preprocess_image(pil_img):
     return final
 
 def extract_orb(image):
-    # Ekstraksi ORB dengan Canny Boosted
     edges = cv2.Canny(image, 50, 150)
     kp, des = ORB.detectAndCompute(edges, None)
     if des is None: return None
     return des.astype(np.uint8)
 
 def predict_ratio(des_query, index):
-    # Fungsi Prediksi menggunakan Rasio Lowe
     scores = {}
     for des_train, label in index:
         try:
@@ -109,7 +102,7 @@ uploaded_file = st.file_uploader("Unggah gambar Aksara Jawa (.png, .jpg)", type=
 if uploaded_file is not None:
     # Cek apakah model berhasil dimuat (Jika ORB_INDEX adalah None, tampilkan error)
     if ORB_INDEX is None:
-        st.error("🚨 Model gagal dimuat. Harap pastikan orb_index.pkl.gz dan label_map.json telah diunggah dengan benar.")
+        st.error("🚨 Model tidak berhasil dimuat! Harap pastikan orb_index.pkl.gz dan label_map.json telah diunggah ke GitHub.")
         st.stop()
         
     try:
