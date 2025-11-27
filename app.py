@@ -1,4 +1,4 @@
-# app.py (Final Deployment Version with Gzip Support and UI Fixes)
+# app.py (Final Deployment Version - CLEANED)
 
 import streamlit as st
 import cv2
@@ -17,24 +17,16 @@ ORB_N_FEATURES = 250
 RATIO_THRESH = 0.75
 ACCURACY_REPORTED = 32.89 # Akurasi Test Final Anda
 
-# Load model dan label saat aplikasi dimulai
 @st.cache_resource
 def load_resources():
     try:
-        # MEMUAT FILE TERKOMPRESI MENGGUNAKAN GZIP
         with gzip.open(INDEX_FILE, "rb") as f: 
             orb_index = pickle.load(f)
-            
         with open(LABEL_FILE, "r") as f:
             label_map = json.load(f)
-
-        # Inisialisasi ORB dan Matcher
         orb = cv2.ORB_create(nfeatures=ORB_N_FEATURES)
         bf_knn = cv2.BFMatcher(cv2.NORM_HAMMING, crossCheck=False)
-
-        # Inversi label map (dari ID ke Nama Aksara)
         id_to_label = {v: k for k, v in label_map.items()}
-
         return orb_index, label_map, id_to_label, orb, bf_knn
     except FileNotFoundError:
         return None, None, None, None, None
@@ -46,13 +38,11 @@ ORB_INDEX, LABEL_MAP, ID_TO_LABEL, ORB, BF_KNN = load_resources()
 # --- 2. UTILITY FUNCTIONS ---
 
 def pil_to_cv2_gray(pil_img):
-    # Mengubah gambar PIL menjadi Grayscale OpenCV
     rgb_img = np.array(pil_img.convert('RGB'))[:, :, ::-1]
     gray = cv2.cvtColor(rgb_img, cv2.COLOR_BGR2GRAY)
     return gray.astype(np.uint8)
 
 def deskew(image):
-    # Fungsi Deskew 
     coords = np.column_stack(np.where(image > 0))
     if len(coords) < 10: return image
     angle = cv2.minAreaRect(coords)[-1]
@@ -64,7 +54,6 @@ def deskew(image):
     return rotated
 
 def preprocess_image(pil_img):
-    # Melakukan Preprocessing lengkap
     img = pil_to_cv2_gray(pil_img)
     blur = cv2.GaussianBlur(img, (3, 3), 0)
     th = cv2.adaptiveThreshold(blur, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY_INV, 25, 10)
@@ -73,14 +62,12 @@ def preprocess_image(pil_img):
     return final
 
 def extract_orb(image):
-    # Ekstraksi ORB dengan Canny Boosted
     edges = cv2.Canny(image, 50, 150)
     kp, des = ORB.detectAndCompute(edges, None)
     if des is None: return None
     return des.astype(np.uint8)
 
 def predict_ratio(des_query, index, ratio_thresh, top_k_count):
-    # Fungsi Prediksi menggunakan Rasio Lowe (Mengembalikan Prediksi Rank 1 dan Top-K)
     all_scores = []
     
     for des_train, label_id in index:
@@ -90,7 +77,7 @@ def predict_ratio(des_query, index, ratio_thresh, top_k_count):
             for pair in matches:
                 if len(pair) < 2: continue
                 m, n = pair[0], pair[1]
-                if m.distance < ratio_thresh * n.distance: # Menggunakan slider ratio
+                if m.distance < ratio_thresh * n.distance: 
                     good_matches += 1
             
             all_scores.append({"score": good_matches, "label_id": label_id})
@@ -99,13 +86,9 @@ def predict_ratio(des_query, index, ratio_thresh, top_k_count):
 
     if not all_scores: return None, []
 
-    # 1. Ambil Top Match Rank 1 (Skor Tertinggi)
     top_results = sorted(all_scores, key=lambda x: x["score"], reverse=True)
-    
     predicted_label_id = top_results[0]["label_id"]
     final_prediction = ID_TO_LABEL[predicted_label_id]
-    
-    # Ambil Top-K dari slider
     top_k_results = top_results[:top_k_count] 
     
     return final_prediction, top_k_results 
@@ -127,16 +110,11 @@ with col_left:
     st.markdown("---")
     st.subheader("Pengaturan Pencocokan")
 
-    # SLIDER LOWE RATIO (Parameter aktif)
     lowe_ratio = st.slider("Lowe ratio", min_value=0.1, max_value=1.0, value=0.75, step=0.01)
-    
-    # SLIDER TOP-K (Parameter aktif)
     top_k = st.slider("Top-K", min_value=1, max_value=20, value=5, step=1)
-
-    # UNKNOWN THRESHOLD (Dipertahankan untuk replikasi UI)
     unknown_threshold = st.slider("Unknown threshold", min_value=0.01, max_value=0.5, value=0.05, step=0.01)
     
-    st.button("Submit") # Submit button
+    st.button("Submit")
     
 # --- PANEL KANAN: RESULTS DAN PREVIEW ---
 with col_right:
@@ -156,7 +134,7 @@ with col_right:
             col_preview, col_proc = st.columns([1, 1])
             
             with col_preview:
-                st.markdown("**Query Preview**")
+                st.markdown("**Gambar Asli**")
                 st.image(pil_img, use_column_width=True)
             
             with col_proc:
@@ -166,51 +144,33 @@ with col_right:
             st.markdown("---")
             
             if des_query is not None and len(des_query) > 0:
-                # Panggil prediksi dengan parameter dari slider
                 final_prediction, top_matches = predict_ratio(des_query, ORB_INDEX, lowe_ratio, top_k) 
                 
                 # OUTPUT UTAMA
                 st.success(f"**Predicted label:** {final_prediction.upper()}")
                 st.info(f"Ditemukan {len(des_query)} deskriptor ORB.")
 
-                # --- TAMPILAN TOP MATCHES DETAIL ---
+                # --- TAMPILAN TOP MATCHES DETAIL (KARTU/THUMBNAIL REPLIKA) ---
                 st.subheader("Top Matches Detail")
-
-if len(top_matches) > 0:
-    st.markdown(f"**Prediksi Terbaik (Rank 1): {final_prediction.upper()}**")
-    
-    # 1. Konversi ke DataFrame untuk tampilan data
-    df = pd.DataFrame(top_matches)
-    df['label'] = df['label_id'].apply(lambda x: ID_TO_LABEL[x])
-    df = df.drop(columns=['label_id']).rename(columns={'score': 'Good Matches', 'label': 'Label'})
-    df.index += 1
-    
-    # 2. Tampilkan Detail dalam Bentuk Kartu/Kolom
-    st.markdown("---")
-    
-    # Batasi untuk 5 kolom (untuk thumbnail visual)
-    cols = st.columns(len(top_matches)) 
-    
-    for i, row in df.iterrows():
-        # Memisahkan output ke setiap kolom (thumbnail)
-        with cols[i-1]:
-            st.markdown(f"**Rank {row.name}**")
-            st.markdown(f"**{row['Label'].upper()}**")
-            st.caption(f"Score: {row['Good Matches']} matches")
-            
-            # Placeholder Visual (Pengganti Gambar)
-            if row.name == 1:
-                st.image(preprocessed_cv, caption="Best Match Preview", use_column_width=True)
-            else:
-                st.markdown("*(Thumbnail Gambar Training tidak tersedia di Cloud)*")
-
-
-# 3. Tampilkan Dataframe di bagian bawah (opsional, untuk kelengkapan)
-st.markdown("### Data Matching Lengkap")
-st.dataframe(df)
                 
-                st.dataframe(df) # TABEL SEBAGAI PENGGANTI THUMBNAILS
+                df = pd.DataFrame(top_matches)
+                df['label'] = df['label_id'].apply(lambda x: ID_TO_LABEL[x])
+                df = df.drop(columns=['label_id']).rename(columns={'score': 'Good Matches', 'label': 'Label'})
                 
+                # TAMPILAN KARTU (Pengganti Thumbnails)
+                cols = st.columns(len(df)) 
+                for i, row in df.iterrows():
+                    with cols[i]:
+                        st.markdown(f"**Rank {i+1}**")
+                        st.markdown(f"**{row['Label'].upper()}**")
+                        st.caption(f"Score: {row['Good Matches']} matches")
+                        
+                        # Placeholder Visual (Pengganti Gambar - Menampilkan gambar query yang sudah diproses)
+                        if i == 0:
+                            st.image(preprocessed_cv, caption="Best Match Preview", use_column_width=True)
+                        else:
+                            st.markdown("*(Thumbnail Data Training tidak tersedia)*")
+
             else:
                  st.warning("⚠️ Gagal mengekstrak fitur ORB.")
 
