@@ -256,12 +256,5 @@ with col_right:
             
             st.dataframe(cm_df) # Tampilkan tabel CM
 
-            
-            df_metrik = pd.DataFrame(metrik_data)
-            st.table(df_metrik) 
-
-        except Exception as e:
-            st.error(f"Terjadi kesalahan saat memproses gambar: {e}")
-
 st.markdown("---")
 st.caption("Proyek ini menggunakan fitur ORB untuk mencocokkan aksara. Jika akurasi rendah, ini adalah batasan metode fitur lokal.")
