@@ -1,4 +1,4 @@
-# app.py (Final Deployment Version - Clean and Complete)
+# app.py (Final Deployment Version - Hiding Accuracy, Displaying CM)
 
 import streamlit as st
 import cv2
@@ -15,7 +15,7 @@ INDEX_FILE = "orb_index.pkl.gz"
 LABEL_FILE = "label_map.json"
 ORB_N_FEATURES = 250
 RATIO_THRESH = 0.75
-ACCURACY_REPORTED = 32.89 # Akurasi Test Final Anda
+# Akurasi disembunyikan dari tampilan
 
 # Load model dan label saat aplikasi dimulai
 @st.cache_resource
@@ -114,7 +114,7 @@ def predict_ratio(des_query, index, ratio_thresh, top_k_count):
 st.set_page_config(page_title="Identifikasi Aksara Jawa (ORB-Canny)", layout="wide")
 
 st.title("🔠 Identifikasi Aksara Jawa (Metode ORB)")
-st.caption(f"Akurasi Test: {ACCURACY_REPORTED:.2f}%. Model menggunakan {ORB_N_FEATURES} fitur ORB dengan Rasio Lowe.")
+st.caption(f"Proyek menggunakan {ORB_N_FEATURES} fitur ORB dengan Rasio Lowe.") # Akurasi dihapus
 
 # Struktur 2 Kolom Utama (Meniru Layout Dosen)
 col_left, col_right = st.columns([1, 2])
@@ -196,17 +196,49 @@ with col_right:
             else:
                  st.warning("⚠️ Gagal mengekstrak fitur ORB.")
 
-            # --- TAMPILAN METRIK STATIS (PENGGANTI CM) ---
+            # --- TAMPILAN CONFUSION MATRIX (CM) ---
             st.markdown("---")
             st.subheader("Evaluasi Penuh: Confusion Matrix & Metrik")
             
-            st.metric(label="Akurasi Model Test (Offline)", value=f"{ACCURACY_REPORTED:.2f}%", delta="Target Dosen: >80%", delta_color="inverse")
-
-            st.markdown("""
-            #### 🧩 Detail Metrik Kinerja
-            Metrik penuh (Precision, Recall, F1) dihitung *offline* dan tersedia di laporan.
-            """)
+            # Menampilkan Label untuk CM
+            cm_labels = list(LABEL_MAP.keys()) 
             
+            # --- DEFINISI DATA CM STATIS (Menggunakan CM 32.89% Akurasi) ---
+            # Data ini mereplikasi hasil CM 20x20 secara statis
+            cm_data_simple = [
+                [ 3,  0,  0,  2,  0,  0,  0,  3,  0,  0,  0,  1,  8,  0,  0,  1,  0,  1,  0,  0], # baris ba
+                [ 0, 10,  0,  2,  0,  0,  0,  2,  0,  0,  1,  0,  0,  0,  0,  4,  0,  0,  0,  0], # baris ca
+                [ 0,  1, 15,  1,  0,  0,  0,  1,  0,  0,  1,  0,  0,  0,  0,  0,  0,  0,  0,  0], # baris da
+                [ 0,  1,  0, 14,  0,  0,  0,  1,  1,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0], # baris dha
+                [ 0,  3,  0,  2,  1,  1,  0,  6,  1,  0,  0,  0,  3,  0,  0,  0,  0,  0,  0,  1], # baris ga
+                [ 1,  1,  1,  4,  0,  4,  0,  3,  1,  0,  0,  0,  1,  0,  0,  1,  0,  0,  0,  1], # baris ha
+                [ 0,  3,  0,  1,  0,  0,  8,  3,  0,  0,  0,  0,  0,  0,  0,  3,  0,  0,  0,  1], # baris ja
+                [ 0,  1,  0,  1,  0,  1,  0, 13,  0,  0,  3,  0,  0,  0,  0,  0,  0,  0,  0,  0], # baris ka
+                [ 0,  4,  1,  3,  0,  2,  0,  4,  2,  0,  0,  0,  0,  1,  0,  1,  0,  0,  0,  1], # baris la
+                [ 0,  5,  0,  7,  0,  0,  1,  0,  1,  6,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0], # baris ma
+                [ 0,  1,  1,  0,  0,  1,  0, 12,  0,  0,  4,  0,  0,  0,  0,  0,  0,  0,  0,  0], # baris na
+                [ 2,  1,  1,  3,  0,  0,  0,  1,  1,  0,  0,  3,  6,  0,  0,  1,  0,  0,  0,  0], # baris nga
+                [ 0,  2,  0,  3,  0,  1,  0,  4,  0,  0,  0,  0,  9,  0,  0,  0,  0,  0,  0,  0], # baris nya
+                [ 0,  3,  3,  0,  0,  2,  0,  4,  1,  0,  0,  1,  1,  1,  0,  1,  0,  0,  0,  1], # baris pa
+                [ 1,  4,  2,  2,  1,  1,  0,  3,  2,  0,  0,  0,  1,  0,  0,  1,  0,  0,  0,  0], # baris ra
+                [ 0, 12,  0,  0,  0,  0,  0,  1,  0,  0,  0,  0,  0,  0,  0,  6,  0,  0,  0,  0], # baris sa
+                [ 0,  5,  0,  4,  0,  0,  0,  5,  0,  0,  0,  0,  0,  0,  0,  1,  4,  0,  0,  0], # baris ta
+                [ 0,  3,  2,  1,  0,  0,  0,  2,  0,  0,  0,  0,  0,  0,  0,  0,  0, 11,  0,  0], # baris tha
+                [ 0, 10,  0,  6,  0,  0,  0,  1,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  2,  0], # baris wa
+                [ 0,  1,  0,  3,  0,  1,  0,  2,  2,  0,  0,  0,  0,  0,  0,  3,  0,  0,  0,  7]  # baris ya
+            ]
+
+            cm_df = pd.DataFrame(data=np.array(cm_data_simple), columns=cm_labels)
+            cm_df.insert(0, 'GT \ Pred', cm_labels) # Tambahkan kolom Ground Truth
+
+            # Menampilkan Data CM
+            st.dataframe(cm_df)
+            
+            # Menampilkan Metrik Ringkas di bawah CM
+            st.markdown("""
+            #### Ringkasan Metrik
+            Nilai metrik di bawah ini adalah hasil perhitungan dari CM di atas (akurasi 32.89%):
+            """)
             metrik_data = {
                 'Metric': ['Accuracy', 'Average Precision', 'Average Recall', 'F1-Score'],
                 'Value': [f"{ACCURACY_REPORTED:.2f}%", f"{33.00:.2f}%", f"{33.00:.2f}%", f"{32.50:.2f}%"] 
