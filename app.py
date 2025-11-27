@@ -10,8 +10,7 @@ import gzip # Diperlukan untuk membaca file terkompresi
 from PIL import Image
 
 # --- 1. KONFIGURASI DAN LOAD MODEL ---
-# UBAH NAMA FILE MENJADI TERKOMPRESI (.gz)
-INDEX_FILE = "orb_index.pkl.gz" 
+INDEX_FILE = "orb_index.pkl" 
 LABEL_FILE = "label_map.json"
 ORB_N_FEATURES = 250
 RATIO_THRESH = 0.75
