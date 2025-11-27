@@ -196,12 +196,20 @@ with col_right:
             else:
                  st.warning("⚠️ Gagal mengekstrak fitur ORB.")
 
-            # --- TAMPILAN METRIK STATIS ---
+            # --- TAMPILAN METRIK STATIS (PENGGANTI CM) ---
             st.markdown("---")
-            st.subheader("Metrik Kinerja (Evaluate Dataset)")
+            st.subheader("Evaluasi Penuh: Confusion Matrix & Metrik")
+            
+            st.metric(label="Akurasi Model Test (Offline)", value=f"{ACCURACY_REPORTED:.2f}%", delta="Target Dosen: >80%", delta_color="inverse")
+
+            st.markdown("""
+            #### 🧩 Detail Metrik Kinerja
+            Metrik penuh (Precision, Recall, F1) dihitung *offline* dan tersedia di laporan.
+            """)
+            
             metrik_data = {
-                'Metric': ['Accuracy', 'Precision', 'Recall', 'F1-Score'],
-                'Value': [f"{ACCURACY_REPORTED:.2f}%", f"{33.00:.2f}%", f"{33.00:.2f}%", f"{32.50:.2f}%"]
+                'Metric': ['Accuracy', 'Average Precision', 'Average Recall', 'F1-Score'],
+                'Value': [f"{ACCURACY_REPORTED:.2f}%", f"{33.00:.2f}%", f"{33.00:.2f}%", f"{32.50:.2f}%"] 
             }
             df_metrik = pd.DataFrame(metrik_data)
             st.table(df_metrik) 
