@@ -17,9 +17,9 @@ ORB_N_FEATURES = 250
 RATIO_THRESH = 0.75
 ACCURACY_REPORTED = 32.89 # Akurasi Test Final Anda
 
+# Load model dan label saat aplikasi dimulai
 @st.cache_resource
 def load_resources():
-    """Memuat model terkompresi (.gz) dan inisialisasi ORB/BFMatcher."""
     try:
         # MEMUAT FILE TERKOMPRESI MENGGUNAKAN GZIP
         with gzip.open(INDEX_FILE, "rb") as f: 
@@ -37,10 +37,8 @@ def load_resources():
 
         return orb_index, label_map, id_to_label, orb, bf_knn
     except FileNotFoundError:
-        st.error(f"🚨 KRITIS: File model tidak ditemukan ({INDEX_FILE} atau {LABEL_FILE}).")
         return None, None, None, None, None
     except Exception as e:
-        st.error(f"🚨 Gagal memuat sumber daya: {e}")
         return None, None, None, None, None
 
 ORB_INDEX, LABEL_MAP, ID_TO_LABEL, ORB, BF_KNN = load_resources()
@@ -138,8 +136,7 @@ with col_left:
     # UNKNOWN THRESHOLD (Dipertahankan untuk replikasi UI)
     unknown_threshold = st.slider("Unknown threshold", min_value=0.01, max_value=0.5, value=0.05, step=0.01)
     
-    # Tombol formal
-    st.button("Submit") 
+    st.button("Submit") # Submit button
     
 # --- PANEL KANAN: RESULTS DAN PREVIEW ---
 with col_right:
@@ -182,7 +179,7 @@ with col_right:
                 df['label'] = df['label_id'].apply(lambda x: ID_TO_LABEL[x])
                 df = df.drop(columns=['label_id']).rename(columns={'score': 'Good Matches', 'label': 'Label'})
                 
-                # Menampilkan Kartu Visual (Meniru Thumbnail Dosen)
+                # Menampilkan Kartu Visual (Pengganti Thumbnails)
                 cols = st.columns(len(df))
                 for i, row in df.iterrows():
                     with cols[i]:
@@ -190,7 +187,7 @@ with col_right:
                         st.markdown(f"**{row['Label'].upper()}**")
                         st.caption(f"Score: {row['Good Matches']} matches")
                         
-                        # Preview Visual (Hanya Rank 1 yang menampilkan gambar query yang diproses)
+                        # Placeholder Visual (Hanya Rank 1 yang menampilkan gambar query yang diproses)
                         if i == 0:
                             st.image(preprocessed_cv, caption="Best Match Preview", use_column_width=True)
                         else:
