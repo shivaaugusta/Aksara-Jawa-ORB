@@ -228,26 +228,6 @@ with col_right:
             cm_df = pd.DataFrame(data=np.array(cm_data_39_68), columns=cm_labels)
             cm_df.insert(0, 'GT \ Pred', cm_labels) # Tambahkan kolom Ground Truth (GT)
 
-            st.markdown("""
-            #### 📊 Confusion Matrix (CM) Mentah 20x20
-            Angka-angka di bawah ini adalah hasil evaluasi penuh model pada data test:
-            """)
-            
-            st.dataframe(cm_df) # Tampilkan tabel CM
-
-            # Menampilkan Metrik Ringkas
-            st.markdown("---")
-            st.subheader("Ringkasan Metrik Kinerja")
-            
-            st.metric(label="Akurasi Model Test (Offline)", value=f"{ACCURACY_REPORTED:.2f}%", delta="Target Dosen: >80%", delta_color="inverse")
-            
-            metrik_data = {
-                'Metric': ['Average Precision', 'Average Recall', 'F1-Score'],
-                'Value': [f"{33.00:.2f}%", f"{33.00:.2f}%", f"{32.50:.2f}%"] 
-            }
-            df_metrik = pd.DataFrame(metrik_data)
-            st.table(df_metrik) 
-
         except Exception as e:
             st.error(f"Terjadi kesalahan saat memproses gambar: {e}")
 
