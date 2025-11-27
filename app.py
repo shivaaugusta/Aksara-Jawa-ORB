@@ -15,8 +15,7 @@ INDEX_FILE = "orb_index.pkl.gz"
 LABEL_FILE = "label_map.json"
 ORB_N_FEATURES = 250
 RATIO_THRESH = 0.75
-# NILAI AKURASI TERBARU DIPERBARUI DI SINI
-ACCURACY_REPORTED = 39.68 
+ACCURACY_REPORTED = 39.68 # Akurasi Test Final Anda
 
 # Load model dan label saat aplikasi dimulai
 @st.cache_resource
@@ -115,7 +114,7 @@ def predict_ratio(des_query, index, ratio_thresh, top_k_count):
 st.set_page_config(page_title="Identifikasi Aksara Jawa (ORB-Canny)", layout="wide")
 
 st.title("🔠 Identifikasi Aksara Jawa (Metode ORB)")
-st.caption(f"Akurasi Test: {ACCURACY_REPORTED:.2f}%. Model menggunakan {ORB_N_FEATURES} fitur ORB dengan Rasio Lowe.")
+st.caption(f"Proyek menggunakan {ORB_N_FEATURES} fitur ORB dengan Rasio Lowe.")
 
 # Struktur 2 Kolom Utama (Meniru Layout Dosen)
 col_left, col_right = st.columns([1, 2])
@@ -197,24 +196,27 @@ with col_right:
             else:
                  st.warning("⚠️ Gagal mengekstrak fitur ORB.")
 
-            # --- TAMPILAN CONFUSION MATRIX (CM) ---
+            # --- TAMPILAN CONFUSION MATRIX (VISUALISASI) ---
             st.markdown("---")
             st.subheader("Evaluasi Penuh: Confusion Matrix & Metrik")
-            
-            # Menampilkan Akurasi Model Test
-            st.metric(label="Akurasi Model Test (Offline)", value=f"{ACCURACY_REPORTED:.2f}%", delta="Target Dosen: >80%", delta_color="inverse")
 
-            st.markdown("""
-            #### 🧩 Detail Metrik Kinerja
-            Metrik penuh (Precision, Recall, F1) dihitung *offline* dan tersedia di laporan.
-            """)
-            
-            metrik_data = {
-                'Metric': ['Accuracy', 'Average Precision', 'Average Recall', 'F1-Score'],
-                'Value': [f"{ACCURACY_REPORTED:.2f}%", f"{33.00:.2f}%", f"{33.00:.2f}%", f"{32.50:.2f}%"] 
+            # Data Metrik Rata-Rata (diambil dari hasil Anda)
+            metrik_data_visual = {
+                'Metric': ['Precision', 'Recall', 'F1-Score'],
+                'Value': [0.33, 0.33, 0.325] 
             }
-            df_metrik = pd.DataFrame(metrik_data)
-            st.table(df_metrik) 
+            df_visual = pd.DataFrame(metrik_data_visual).set_index('Metric')
+
+            # Tampilkan Visualisasi Bar Chart
+            st.markdown("""
+            #### 📊 Perbandingan Metrik Kinerja Rata-Rata
+            Metrik berikut adalah nilai rata-rata yang dihitung dari Confusion Matrix (CM) 20x20.
+            """)
+            st.bar_chart(df_visual) 
+            
+            # Tambahkan akurasi total di bawah chart (untuk memenuhi target dosen)
+            st.markdown(f"**Akurasi Total (Dihitung dari CM):** {ACCURACY_REPORTED:.2f}%")
+
 
         except Exception as e:
             st.error(f"Terjadi kesalahan saat memproses gambar: {e}")
