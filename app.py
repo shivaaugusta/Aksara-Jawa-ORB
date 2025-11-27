@@ -1,4 +1,4 @@
-# app.py (Final Deployment Version)
+# app.py (Final Deployment Version with Gzip Support)
 
 import streamlit as st
 import cv2
@@ -10,7 +10,8 @@ import gzip # Diperlukan untuk membaca file terkompresi
 from PIL import Image
 
 # --- 1. KONFIGURASI DAN LOAD MODEL ---
-INDEX_FILE = "orb_index.pkl" 
+# NAMA FILE WAJIB MENCANTUMKAN .gz
+INDEX_FILE = "orb_index.pkl.gz" 
 LABEL_FILE = "label_map.json"
 ORB_N_FEATURES = 250
 RATIO_THRESH = 0.75
@@ -35,10 +36,9 @@ def load_resources():
 
         return orb_index, label_map, id_to_label, orb, bf_knn
     except FileNotFoundError:
-        # Jika file .gz hilang
-        return None, None, None, None, None 
+        return None, None, None, None, None
     except Exception as e:
-        # st.error(f"Gagal memuat sumber daya: {e}") 
+        # Menangkap error jika load gagal karena format atau data corrupted
         return None, None, None, None, None
 
 ORB_INDEX, LABEL_MAP, ID_TO_LABEL, ORB, BF_KNN = load_resources()
@@ -109,7 +109,7 @@ uploaded_file = st.file_uploader("Unggah gambar Aksara Jawa (.png, .jpg)", type=
 if uploaded_file is not None:
     # Cek apakah model berhasil dimuat (Jika ORB_INDEX adalah None, tampilkan error)
     if ORB_INDEX is None:
-        st.error("🚨 Model tidak berhasil dimuat! Harap pastikan orb_index.pkl.gz dan label_map.json telah diunggah ke GitHub.")
+        st.error("🚨 Model gagal dimuat. Harap pastikan orb_index.pkl.gz dan label_map.json telah diunggah dengan benar.")
         st.stop()
         
     try:
