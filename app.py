@@ -198,7 +198,7 @@ with col_right:
 
             # --- TAMPILAN CONFUSION MATRIX (CM) ---
             st.markdown("---")
-            st.subheader("Evaluasi Penuh: Confusion Matrix & Metrik")
+            st.subheader("Evaluasi Penuh: Confusion Matrix")
             
             # --- DEFINISI DATA CM STATIS 20x20 (Diambil dari hasil 39.68%) ---
             cm_labels = list(LABEL_MAP.keys()) 
