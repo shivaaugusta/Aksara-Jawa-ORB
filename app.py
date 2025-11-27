@@ -1,4 +1,4 @@
-# app.py (Final Deployment Version - Lengkap)
+# app.py (Final Deployment Version - Tanpa Tabel Metrik Ringkas)
 
 import streamlit as st
 import cv2
@@ -13,7 +13,7 @@ from PIL import Image
 # --- 1. KONFIGURASI DAN LOAD MODEL ---
 INDEX_FILE = "orb_index.pkl.gz" 
 LABEL_FILE = "label_map.json"
-ORB_N_FEATURES = 250 # Jumlah fitur ORB yang diset
+ORB_N_FEATURES = 250
 RATIO_THRESH = 0.75
 ACCURACY_REPORTED = 39.68 # Akurasi Test Final Anda
 
@@ -37,11 +37,8 @@ def load_resources():
 
         return orb_index, label_map, id_to_label, orb, bf_knn
     except FileNotFoundError:
-        # Menangani jika file model tidak ditemukan
-        st.error("🚨 Model tidak berhasil dimuat! Harap pastikan 'orb_index.pkl.gz' dan 'label_map.json' telah diunggah ke GitHub.")
         return None, None, None, None, None
     except Exception as e:
-        st.error(f"Terjadi kesalahan saat memuat sumber daya: {e}")
         return None, None, None, None, None
 
 ORB_INDEX, LABEL_MAP, ID_TO_LABEL, ORB, BF_KNN = load_resources()
@@ -83,14 +80,8 @@ def extract_orb(image):
     return des.astype(np.uint8)
 
 def predict_ratio(des_query, index, ratio_thresh, top_k_count):
-    """
-    Fungsi Prediksi menggunakan Rasio Lowe.
-    Menghitung Good Matches dan Persentase Kecocokan.
-    """
+    """Fungsi Prediksi menggunakan Rasio Lowe dan mengembalikan Rank 1 dan Top-K."""
     all_scores = []
-    
-    # Total fitur maksimum yang mungkin untuk normalisasi persentase
-    max_possible_matches = ORB_N_FEATURES 
     
     for des_train, label_id in index:
         try:
@@ -102,10 +93,7 @@ def predict_ratio(des_query, index, ratio_thresh, top_k_count):
                 if m.distance < ratio_thresh * n.distance: 
                     good_matches += 1
             
-            # Hitung persentase: Good Matches dibagi total fitur ORB yang diset (250)
-            score_percent = (good_matches / max_possible_matches) * 100
-            
-            all_scores.append({"score": good_matches, "score_percent": score_percent, "label_id": label_id})
+            all_scores.append({"score": good_matches, "label_id": label_id})
         except:
             continue
 
@@ -128,7 +116,7 @@ st.set_page_config(page_title="Identifikasi Aksara Jawa (ORB-Canny)", layout="wi
 st.title("🔠 Identifikasi Aksara Jawa (Metode ORB)")
 st.caption(f"Proyek menggunakan {ORB_N_FEATURES} fitur ORB dengan Rasio Lowe.")
 
-# Struktur 2 Kolom Utama 
+# Struktur 2 Kolom Utama (Meniru Layout Dosen)
 col_left, col_right = st.columns([1, 2])
 
 # --- PANEL KIRI: UPLOAD & PENGATURAN ---
@@ -156,7 +144,7 @@ with col_right:
     
     if uploaded_file is not None:
         if ORB_INDEX is None:
-            # Error sudah dihandle di load_resources, hanya perlu stop
+            st.error("🚨 Model tidak berhasil dimuat! Harap refresh dan pastikan file model ada.")
             st.stop()
 
         try:
@@ -189,30 +177,21 @@ with col_right:
                 
                 df = pd.DataFrame(top_matches)
                 df['label'] = df['label_id'].apply(lambda x: ID_TO_LABEL[x])
+                df = df.drop(columns=['label_id']).rename(columns={'score': 'Good Matches', 'label': 'Label'})
                 
-                # Tambahkan Score Persen
-                df['Score (%)'] = df['score_percent'].apply(lambda x: f"{x:.2f}%") 
-
-                # Bersihkan dan Rename Kolom untuk Tampilan
-                df = df.drop(columns=['label_id', 'score_percent']).rename(columns={'score': 'Good Matches', 'label': 'Label'})
-                
-                # Menampilkan Kartu Visual
+                # Menampilkan Kartu Visual (Pengganti Thumbnails)
                 cols = st.columns(len(df))
                 for i, row in df.iterrows():
                     with cols[i]:
                         st.markdown(f"**Rank {i+1}**")
                         st.markdown(f"**{row['Label'].upper()}**")
-                        
-                        # Tampilkan Score Persen
-                        st.caption(f"**{row['Score (%)']}**") 
-                        st.caption(f"({row['Good Matches']} matches)") 
+                        st.caption(f"Score: {row['Good Matches']} matches")
                         
                         # Placeholder Visual (Hanya Rank 1 yang menampilkan gambar query yang diproses)
                         if i == 0:
                             st.image(preprocessed_cv, caption="Best Match Preview", use_column_width=True)
                         else:
-                            # Thumbnail data training tidak tersedia karena hanya deskriptor yang disimpan
-                            st.markdown("*(Thumbnail Data Training tidak tersedia)*") 
+                            st.markdown("*(Thumbnail Data Training tidak tersedia)*")
 
             else:
                  st.warning("⚠️ Gagal mengekstrak fitur ORB.")
@@ -255,6 +234,9 @@ with col_right:
             """)
             
             st.dataframe(cm_df) # Tampilkan tabel CM
+
+        except Exception as e:
+            st.error(f"Terjadi kesalahan saat memproses gambar: {e}")
 
 st.markdown("---")
 st.caption("Proyek ini menggunakan fitur ORB untuk mencocokkan aksara. Jika akurasi rendah, ini adalah batasan metode fitur lokal.")
