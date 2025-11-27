@@ -1,4 +1,4 @@
-# app.py (Final Deployment Version - Clean and Complete)
+# app.py (Final Deployment Version - Tanpa Teks Penjelasan Metrik)
 
 import streamlit as st
 import cv2
@@ -15,7 +15,7 @@ INDEX_FILE = "orb_index.pkl.gz"
 LABEL_FILE = "label_map.json"
 ORB_N_FEATURES = 250
 RATIO_THRESH = 0.75
-ACCURACY_REPORTED = 39.68 # Variabel tetap ada tapi disembunyikan
+ACCURACY_REPORTED = 39.68 # Akurasi tetap disimpan di variabel
 
 # Load model dan label saat aplikasi dimulai
 @st.cache_resource
@@ -198,9 +198,9 @@ with col_right:
 
             # --- TAMPILAN CONFUSION MATRIX (CM) ---
             st.markdown("---")
-            st.subheader("Evaluasi Penuh: Confusion Matrix") # Judul diubah
+            st.subheader("Evaluasi Penuh: Confusion Matrix")
             
-            # --- DEFINISI DATA CM STATIS 20x20 ---
+            # --- DEFINISI DATA CM STATIS 20x20 (Diambil dari hasil 39.68%) ---
             cm_labels = list(LABEL_MAP.keys()) 
             cm_data_39_68 = [
                 [ 4,  0,  0,  0,  0,  1,  0,  3,  0,  0,  0,  0,  8,  0,  0,  1,  0,  0,  0,  2], 
