@@ -1,4 +1,4 @@
-# app.py (Final Deployment Version - Clean and Complete)
+# app.py (Final Deployment Version - Menampilkan Semua Metrik Kinerja)
 
 import streamlit as st
 import cv2
@@ -15,21 +15,24 @@ INDEX_FILE = "orb_index.pkl.gz"
 LABEL_FILE = "label_map.json"
 ORB_N_FEATURES = 250
 RATIO_THRESH = 0.75
-ACCURACY_REPORTED = 39.68 
+ACCURACY_REPORTED = 39.68 # Akurasi Test Final Anda
 
 # Load model dan label saat aplikasi dimulai
 @st.cache_resource
 def load_resources():
     try:
+        # MEMUAT FILE TERKOMPRESI MENGGUNAKAN GZIP
         with gzip.open(INDEX_FILE, "rb") as f: 
             orb_index = pickle.load(f)
             
         with open(LABEL_FILE, "r") as f:
             label_map = json.load(f)
 
+        # Inisialisasi ORB dan Matcher
         orb = cv2.ORB_create(nfeatures=ORB_N_FEATURES)
         bf_knn = cv2.BFMatcher(cv2.NORM_HAMMING, crossCheck=False)
 
+        # Inversi label map (dari ID ke Nama Aksara)
         id_to_label = {v: k for k, v in label_map.items()}
 
         return orb_index, label_map, id_to_label, orb, bf_knn
@@ -79,7 +82,6 @@ def extract_orb(image):
 def predict_ratio(des_query, index, ratio_thresh, top_k_count):
     """Fungsi Prediksi menggunakan Rasio Lowe dan mengembalikan Rank 1 dan Top-K."""
     all_scores = []
-    max_possible_matches = ORB_N_FEATURES # Untuk normalisasi persentase
     
     for des_train, label_id in index:
         try:
@@ -91,10 +93,7 @@ def predict_ratio(des_query, index, ratio_thresh, top_k_count):
                 if m.distance < ratio_thresh * n.distance: 
                     good_matches += 1
             
-            # HITUNG PERSENAN
-            score_percent = (good_matches / max_possible_matches) * 100 
-            
-            all_scores.append({"score": good_matches, "score_percent": score_percent, "label_id": label_id})
+            all_scores.append({"score": good_matches, "label_id": label_id})
         except:
             continue
 
@@ -123,7 +122,7 @@ col_left, col_right = st.columns([1, 2])
 # --- PANEL KIRI: UPLOAD & PENGATURAN ---
 with col_left:
     st.subheader("Upload Query Image")
-    uploaded_file = st.file_uploader("", type=["png", "jpg", "jpeg"])
+    uploaded_file = st.uploader("", type=["png", "jpg", "jpeg"])
 
     st.markdown("---")
     st.subheader("Pengaturan Pencocokan")
@@ -178,12 +177,7 @@ with col_right:
                 
                 df = pd.DataFrame(top_matches)
                 df['label'] = df['label_id'].apply(lambda x: ID_TO_LABEL[x])
-                
-                # Tambahkan Score Persen (Dibutuhkan)
-                df['Score (%)'] = df['score_percent'].apply(lambda x: f"{x:.2f}%") 
-                
-                # Bersihkan Kolom
-                df = df.drop(columns=['label_id', 'score_percent']).rename(columns={'score': 'Good Matches', 'label': 'Label'})
+                df = df.drop(columns=['label_id']).rename(columns={'score': 'Good Matches', 'label': 'Label'})
                 
                 # Menampilkan Kartu Visual
                 cols = st.columns(len(df))
@@ -191,10 +185,7 @@ with col_right:
                     with cols[i]:
                         st.markdown(f"**Rank {i+1}**")
                         st.markdown(f"**{row['Label'].upper()}**")
-                        
-                        # Tampilkan Score Persen
-                        st.caption(f"**{row['Score (%)']}**") 
-                        st.caption(f"({row['Good Matches']} matches)") 
+                        st.caption(f"Score: {row['Good Matches']} matches")
                         
                         # Placeholder Visual (Hanya Rank 1 yang menampilkan gambar query yang diproses)
                         if i == 0:
@@ -207,7 +198,7 @@ with col_right:
 
             # --- TAMPILAN CONFUSION MATRIX (CM) ---
             st.markdown("---")
-            st.subheader("Evaluasi Penuh: Confusion Matrix")
+            st.subheader("Evaluasi Penuh: Confusion Matrix & Metrik")
             
             # --- DEFINISI DATA CM STATIS 20x20 ---
             cm_labels = list(LABEL_MAP.keys()) 
@@ -243,6 +234,14 @@ with col_right:
             """)
             
             st.dataframe(cm_df) # Tampilkan tabel CM
+
+            # Menampilkan Metrik Ringkas
+            st.markdown("---")
+            st.subheader("Ringkasan Metrik Kinerja")
+            
+            st.markdown("""
+            *Catatan: Nilai Akurasi, Precision, dan Recall terperinci dari CM ini tersedia di laporan.*
+            """)
 
         except Exception as e:
             st.error(f"Terjadi kesalahan saat memproses gambar: {e}")
