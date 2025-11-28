@@ -1,4 +1,4 @@
-# app.py (Final Deployment Version - Menampilkan Semua Metrik Kinerja)
+# app.py (Final Deployment Version - Clean and Complete)
 
 import streamlit as st
 import cv2
@@ -122,7 +122,7 @@ col_left, col_right = st.columns([1, 2])
 # --- PANEL KIRI: UPLOAD & PENGATURAN ---
 with col_left:
     st.subheader("Upload Query Image")
-    uploaded_file = st.uploader("", type=["png", "jpg", "jpeg"])
+    uploaded_file = st.file_uploader("", type=["png", "jpg", "jpeg"])
 
     st.markdown("---")
     st.subheader("Pengaturan Pencocokan")
@@ -198,9 +198,9 @@ with col_right:
 
             # --- TAMPILAN CONFUSION MATRIX (CM) ---
             st.markdown("---")
-            st.subheader("Evaluasi Penuh: Confusion Matrix & Metrik")
+            st.subheader("Evaluasi Penuh: Confusion Matrix")
             
-            # --- DEFINISI DATA CM STATIS 20x20 ---
+            # --- DEFINISI DATA CM STATIS 20x20 (Diambil dari hasil 39.68%) ---
             cm_labels = list(LABEL_MAP.keys()) 
             cm_data_39_68 = [
                 [ 4,  0,  0,  0,  0,  1,  0,  3,  0,  0,  0,  0,  8,  0,  0,  1,  0,  0,  0,  2], 
@@ -235,7 +235,7 @@ with col_right:
             
             st.dataframe(cm_df) # Tampilkan tabel CM
 
-            # Menampilkan Metrik Ringkas
+            # Menampilkan Metrik Ringkas (TIDAK ADA ANGKA ACCURACY ATAU PERSEN)
             st.markdown("---")
             st.subheader("Ringkasan Metrik Kinerja")
             
