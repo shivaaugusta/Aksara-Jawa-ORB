@@ -1,4 +1,4 @@
-# app.py (Final Deployment Version - Fix Indentation Kritis)
+# app.py (Final Deployment Version - Clean and Complete)
 
 import streamlit as st
 import cv2
@@ -110,19 +110,16 @@ def predict_ratio(des_query, index, ratio_thresh, top_k_count):
 # --- 3. APLIKASI STREAMLIT UTAMA ---
 st.set_page_config(page_title="Identifikasi Aksara Jawa (ORB-Canny)", layout="wide")
 
-st.title("🔠 Identifikasi Aksara Jawa (Metode ORB)")
-st.caption(f"Proyek menggunakan {ORB_N_FEATURES} fitur ORB dengan Rasio Lowe.")
-
 # Struktur 2 Kolom Utama (Lebar Panel Kiri Diperkecil: [1] vs [3])
 col_left, col_right = st.columns([1, 3])
 
 # --- PANEL KIRI: UPLOAD & PENGATURAN ---
 with col_left:
-    # --- HEADER DIPINDAH KE SINI ---
+    # --- HEADER DIPINDAH KE SINI (Sesuai Permintaan Dosen) ---
     st.title("🔠 Identifikasi Aksara Jawa (Metode ORB)")
     st.caption(f"Proyek menggunakan {ORB_N_FEATURES} fitur ORB dengan Rasio Lowe.")
     st.markdown("---") 
-    # ------------------------------------
+    # -----------------------------------------------------------
 
     st.subheader("Upload Query Image")
     uploaded_file = st.file_uploader("", type=["png", "jpg", "jpeg"])
@@ -211,7 +208,7 @@ with col_right:
 
     # --- TAB 2: FULL EVALUATION (CM & METRICS) ---
     with tab_eval:
-        st.subheader("Evaluasi Penuh: Confusion Matrix & Metrik")
+        st.subheader("Evaluasi Penuh: Confusion Matrix")
         
         # --- DEFINISI DATA CM STATIS 20x20 ---
         cm_labels = list(LABEL_MAP.keys()) 
@@ -236,33 +233,34 @@ with col_right:
             [ 0,  3,  1,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  3,  0, 10,  0,  1], 
             [ 0,  0,  0,  0,  0,  0,  0,  3,  0,  0,  0,  0,  0,  1,  0,  7,  0,  0,  8,  0], 
             [ 0,  0,  0,  1,  0,  2,  1,  2,  1,  0,  0,  0,  0,  1,  0,  5,  0,  0,  1,  5]
-            ]
-            
-            # --- FIX INDENTATION: Baris ini harus sejajar dengan kode sekitarnya ---
-            cm_df = pd.DataFrame(data=np.array(cm_data_39_68), columns=cm_labels) 
-            cm_df.insert(0, 'GT \ Pred', cm_labels) 
+        ]
+        
+        cm_df = pd.DataFrame(data=np.array(cm_data_39_68), columns=cm_labels)
+        cm_df.insert(0, 'GT \ Pred', cm_labels) 
 
-            st.markdown("""
-            #### 📊 Confusion Matrix (CM) Mentah 20x20
-            Angka-angka di bawah ini adalah hasil evaluasi penuh model pada data test:
-            """)
-            
-            st.dataframe(cm_df) # Tampilkan tabel CM
+        st.markdown("""
+        #### 📊 Confusion Matrix (CM) Mentah 20x20
+        Angka-angka di bawah ini adalah hasil evaluasi penuh model pada data test:
+        """)
+        
+        st.dataframe(cm_df) # Tampilkan tabel CM
 
-            # Menampilkan Metrik Ringkas
-            st.markdown("---")
-            st.subheader("Ringkasan Metrik Kinerja")
-            
-            # Menampilkan Akurasi Model Test (Wajib)
-            st.metric(label="Akurasi Model Test (Offline)", value=f"{ACCURACY_REPORTED:.2f}%", delta="Target Dosen: >80%", delta_color="inverse")
-            
-            # Tabel Metrik Tambahan (Wajib)
-            metrik_data = {
-                'Metric': ['Average Precision', 'Average Recall', 'F1-Score'],
-                'Value': [f"{33.00:.2f}%", f"{33.00:.2f}%", f"{32.50:.2f}%"]
-            }
-            df_metrik = pd.DataFrame(metrik_data)
-            st.table(df_metrik) 
+        # Menampilkan Metrik Ringkas (Ringkasan Kinerja)
+        st.markdown("---")
+        st.subheader("Ringkasan Metrik Kinerja")
 
-st.markdown("---")
+        # Menampilkan Akurasi Model Test (Wajib)
+        st.metric(
+            label="Akurasi Model Test (Offline)",
+            value=f"{ACCURACY_REPORTED:.2f}%",
+            delta="Target Dosen: >80%",
+            delta_color="inverse"
+        )
+
+        # Tabel Metrik Tambahan (Wajib)
+        metrik_data = {
+            'Metric': ['Average Precision', 'Average Recall', 'F1-Score'],
+            'Value': [f"{33.00:.2f}%", f"{33.00:.2f}%", f"{32.50:.2f}%"]
+        }
+        st.markdown("---")
 st.caption("Proyek ini menggunakan fitur ORB untuk mencocokkan aksara. Jika akurasi rendah, ini adalah batasan metode fitur lokal.")
