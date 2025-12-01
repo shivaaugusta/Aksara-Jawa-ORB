@@ -1,4 +1,4 @@
-# app.py (Final Deployment Version - Bug Fixed)
+# app.py (Final Deployment Version - Clean and Complete)
 
 import streamlit as st
 import cv2
@@ -41,8 +41,7 @@ def load_resources():
     except Exception as e:
         return None, None, None, None, None
 
-# Ekstrak semua variabel global dari load_resources()
-ORB_INDEX, LABEL_MAP, ID_TO_LABEL, ORB, BF_KNN = load_resources() 
+ORB_INDEX, LABEL_MAP, ID_TO_LABEL, ORB, BF_KNN = load_resources()
 
 # --- 2. UTILITY FUNCTIONS ---
 
@@ -103,9 +102,8 @@ def predict_ratio(des_query, index, ratio_thresh, top_k_count):
     # 1. Ambil Top Match Rank 1 (Skor Tertinggi)
     top_results = sorted(all_scores, key=lambda x: x["score"], reverse=True)
     
-    # MENGGUNAKAN ID_TO_LABEL GLOBAL
     predicted_label_id = top_results[0]["label_id"]
-    final_prediction = ID_TO_LABEL[predicted_label_id] 
+    final_prediction = ID_TO_LABEL[predicted_label_id]
     
     # Ambil Top-K dari slider
     top_k_results = top_results[:top_k_count] 
