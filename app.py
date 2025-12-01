@@ -1,4 +1,4 @@
-# app.py (Final Deployment Version - Menampilkan Semua Metrik Kinerja)
+# app.py (Final Deployment Version - Clean and Complete)
 
 import streamlit as st
 import cv2
@@ -96,6 +96,7 @@ def predict_ratio(des_query, index, ratio_thresh, top_k_count):
 
     if not all_scores: return None, []
 
+    # 1. Ambil Top Match Rank 1 (Skor Tertinggi)
     top_results = sorted(all_scores, key=lambda x: x["score"], reverse=True)
     
     predicted_label_id = top_results[0]["label_id"]
@@ -247,20 +248,20 @@ with col_right:
             
             st.dataframe(cm_df) # Tampilkan tabel CM
 
-            # Menampilkan Metrik Ringkas (sesuai permintaan user)
+            # Menampilkan Metrik Ringkas
             st.markdown("---")
             st.subheader("Ringkasan Metrik Kinerja")
             
-            # Menampilkan Akurasi Model Test
+            # Menampilkan Akurasi Model Test (Wajib)
             st.metric(label="Akurasi Model Test (Offline)", value=f"{ACCURACY_REPORTED:.2f}%", delta="Target Dosen: >80%", delta_color="inverse")
             
-            # Tabel Metrik Tambahan
+            # Tabel Metrik Tambahan (Wajib)
             metrik_data = {
                 'Metric': ['Average Precision', 'Average Recall', 'F1-Score'],
                 'Value': [f"{33.00:.2f}%", f"{33.00:.2f}%", f"{32.50:.2f}%"]
             }
             df_metrik = pd.DataFrame(metrik_data)
-            st.table(df_metrik)
+            st.table(df_metrik) 
 
 st.markdown("---")
 st.caption("Proyek ini menggunakan fitur ORB untuk mencocokkan aksara. Jika akurasi rendah, ini adalah batasan metode fitur lokal.")
