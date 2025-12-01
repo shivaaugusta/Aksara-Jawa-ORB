@@ -1,4 +1,48 @@
-# --- PANEL KIRI: UPLOAD & PENGATURAN ---
+import streamlit as st
+import numpy as np
+import pandas as pd
+from PIL import Image
+
+# =============================================
+# CONFIG
+# =============================================
+st.set_page_config(page_title="Aksara Jawa Classifier", layout="wide")
+st.title("🔠 Aksara Jawa Classifier (Evaluasi)")
+
+# Dummy label mapping (ganti dengan mapping asli)
+ID_TO_LABEL = {i: f"Class {i}" for i in range(20)}
+
+# Dummy ORB index (biar tidak error sebelum kamu load yg asli)
+ORB_INDEX = np.random.rand(20, 50, 32)  # simulasi feature index
+
+
+# =============================================
+# 🔧 DUMMY FUNCTIONS (ganti sama yang asli nanti)
+# =============================================
+def preprocess_image(pil_img):
+    """Simulasi preprocessing ORB"""
+    return pil_img.convert("L")  # grayscale saja untuk sementara
+
+
+def extract_orb(img):
+    """Simulasi ekstraksi ORB"""
+    return np.random.rand(32, 32)  # random feature untuk testing
+
+
+def predict_ratio(des_query, index, ratio, top_k):
+    """Simulasi Top-K prediction"""
+    scores = np.random.rand(20)
+    best_label = scores.argmax()
+    top_matches = [{"label_id": i, "score": float(scores[i])} for i in range(top_k)]
+    return ID_TO_LABEL[best_label], top_matches
+
+
+# =============================================
+# 🖥️ UI LAYOUT – 2 COLUMNS
+# =============================================
+col_left, col_right = st.columns([1, 2])
+
+# ---------------- LEFT PANEL -----------------
 with col_left:
     st.subheader("Upload Query Image")
     uploaded_file = st.file_uploader("", type=["png", "jpg", "jpeg"])
@@ -6,67 +50,54 @@ with col_left:
     st.markdown("---")
     st.subheader("Pengaturan Pencocokan")
 
-    lowe_ratio = st.slider("Lowe ratio", min_value=0.1, max_value=1.0, value=0.75, step=0.01)
-    top_k = st.slider("Top-K", min_value=1, max_value=20, value=5, step=1)
-    unknown_threshold = st.slider("Unknown threshold", min_value=0.01, max_value=0.5, value=0.05, step=0.01)
+    lowe_ratio = st.slider("Lowe Ratio", 0.1, 1.0, 0.75, 0.01)
+    top_k = st.slider("Top-K", 1, 20, 5, 1)
+    thresh = st.slider("Unknown Threshold", 0.01, 0.5, 0.05, 0.01)
 
-    # Submit → Trigger tampil output
     submitted = st.button("📌 Submit")
 
 
-# --- PANEL KANAN: RESULTS ---
+# ---------------- RIGHT PANEL -----------------
 with col_right:
     st.subheader("Results")
 
-    # Hanya tampil jika user menekan Submit
     if submitted:
 
         if uploaded_file is None:
-            st.warning("⚠️ Upload gambar terlebih dahulu sebelum submit!")
+            st.warning("⚠️ Silakan upload gambar dulu sebelum Submit!")
             st.stop()
 
-        if ORB_INDEX is None:
-            st.error("🚨 Model tidak berhasil dimuat! Cek file model.")
-            st.stop()
+        pil_img = Image.open(uploaded_file)
 
-        try:
-            pil_img = Image.open(uploaded_file)
-            preprocessed_cv = preprocess_image(pil_img)
-            des_query = extract_orb(preprocessed_cv)
+        col1, col2 = st.columns(2)
 
-            col_preview, col_proc = st.columns(2)
+        with col1:
+            st.markdown("**Query Preview**")
+            st.image(pil_img, width=250)
 
-            with col_preview:
-                st.markdown("**Query Preview**")
-                st.image(pil_img)
+        # PREPROCESS
+        preproc = preprocess_image(pil_img)
+        with col2:
+            st.markdown("**Processed Image**")
+            st.image(preproc, width=250)
 
-            with col_proc:
-                st.markdown("**Visualisasi Preprocessing**")
-                st.image(preprocessed_cv, caption="Threshold + Deskew + Resize")
+        st.markdown("---")
 
-            st.markdown("---")
+        # ORB FEATURE
+        des_query = extract_orb(preproc)
 
-            if des_query is None or len(des_query) == 0:
-                st.warning("⚠️ Fitur ORB tidak terdeteksi!")
-                st.stop()
+        # RUN PREDIKSI
+        pred, top_matches = predict_ratio(des_query, ORB_INDEX, lowe_ratio, top_k)
+        st.success(f"**Prediksi: {pred}**")
 
-            final_prediction, top_matches = predict_ratio(des_query, ORB_INDEX, lowe_ratio, top_k)
+        # SHOW TOP-K TABLE
+        df = pd.DataFrame(top_matches)
+        df["Label"] = df["label_id"].map(ID_TO_LABEL)
+        df = df[["Label", "score"]]
+        df.columns = ["Label", "Good Matches"]
 
-            st.success(f"Hasil Prediksi: **{final_prediction.upper()}**")
-            st.info(f"Fitur ORB ditemukan: {len(des_query)}")
+        st.markdown("**Top Matching Results**")
+        st.table(df)
 
-            # Top-K Tabel saja (no card grid → hemat space)
-            df = pd.DataFrame(top_matches)
-            df['Label'] = df['label_id'].apply(lambda x: ID_TO_LABEL[x])
-            df = df[['Label', 'score']]
-            df.columns = ["Label", "Good Matches"]
-
-            st.markdown("**Top Matching Results**")
-            st.table(df)
-
-            st.markdown("---")
-            st.markdown("📊 *Confusion Matrix bisa dilihat pada halaman Evaluasi Model*")
-
-        except Exception as e:
-            st.error(f"Error: {e}")
+        st.caption("📊 *Confusion Matrix dan Metrics ada di halaman Evaluasi Model*")
 
