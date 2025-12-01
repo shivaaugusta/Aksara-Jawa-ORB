@@ -185,41 +185,34 @@ with col_right:
                     
                     # --- TAMPILAN TOP MATCHES DETAIL (GRID/KARTU REPLIKA) ---
                     st.subheader("Top Matches Detail")
-
+                    
                     df = pd.DataFrame(top_matches)
                     df['label'] = df['label_id'].apply(lambda x: ID_TO_LABEL[x])
                     
-                    # Rename kolom
-                    df = df.drop(columns=['label_id']).rename(columns={
-                        'score': 'Good Matches',
-                        'score_percent': 'Score (%)',
-                        'label': 'Label'
-                    })
+                    # HITUNG DAN TAMBAH KOLOM PERSENTASE BARU
+                    df['Score (%)'] = df['score_percent'].apply(lambda x: f"{x:.2f}%") 
                     
-                    # Format persentase 2 decimal
-                    df['Score (%)'] = df['Score (%)'].map(lambda x: f"{x:.2f}%")
+                    # Bersihkan Kolom
+                    df = df.drop(columns=['label_id', 'score_percent']).rename(columns={'score': 'Good Matches', 'label': 'Label'})
                     
                     # Menampilkan Kartu Visual
-                    cols_match = st.columns(min(len(df), 5))  # Maks 5 kolom biar tidak hancur layout
+                    cols_match = st.columns(len(df))
                     for i, row in df.iterrows():
-                        with cols_match[i % 5]:  # Auto wrap per 5 kolom
+                        with cols_match[i]:
                             st.markdown(f"**Rank {i+1}**")
                             st.markdown(f"**{row['Label'].upper()}**")
-                            st.caption(f"Matches: {row['Good Matches']}")
-                            st.caption(f"Score: {row['Score (%)']}")
-                    
+                            
+                            # Tampilkan Score Persen
+                            st.caption(f"**{row['Score (%)']}**") 
+                            st.caption(f"({row['Good Matches']} matches)") 
+                            
                             if i == 0:
-                                st.image(
-                                    preprocessed_cv,
-                                    caption="Best Match Preview",
-                                    use_column_width=True
-                                )
+                                st.image(preprocessed_cv, caption="Best Match Preview", use_column_width=True)
                             else:
                                 st.markdown("*(Thumbnail Data Training tidak tersedia)*")
-                except Exception as e:
-                st.error(f"❌ Terjadi error saat prediksi: {str(e)}")
-            finally:
-                pass  # Tutup try/except dengan benar
+
+            except Exception as e:
+                st.error(f"Terjadi kesalahan saat memproses gambar: {e}")
     # --- TAB 2: FULL EVALUATION (CM & METRICS) ---
     with tab_eval:
         st.subheader("Evaluasi Penuh: Confusion Matrix")
