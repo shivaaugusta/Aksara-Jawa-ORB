@@ -1,4 +1,4 @@
-# app.py (Final Deployment Version - Clean and Complete)
+# app.py (Final Deployment Version - Menampilkan Semua Metrik Kinerja)
 
 import streamlit as st
 import cv2
@@ -96,7 +96,6 @@ def predict_ratio(des_query, index, ratio_thresh, top_k_count):
 
     if not all_scores: return None, []
 
-    # 1. Ambil Top Match Rank 1 (Skor Tertinggi)
     top_results = sorted(all_scores, key=lambda x: x["score"], reverse=True)
     
     predicted_label_id = top_results[0]["label_id"]
@@ -118,11 +117,11 @@ col_left, col_right = st.columns([1, 3])
 
 # --- PANEL KIRI: UPLOAD & PENGATURAN ---
 with col_left:
-    # --- HEADER DIPINDAH KE SINI (Sesuai Permintaan Dosen) ---
+    # --- HEADER DIPINDAH KE SINI ---
     st.title("🔠 Identifikasi Aksara Jawa (Metode ORB)")
     st.caption(f"Proyek menggunakan {ORB_N_FEATURES} fitur ORB dengan Rasio Lowe.")
     st.markdown("---") 
-    # -----------------------------------------------------------
+    # ------------------------------------
 
     st.subheader("Upload Query Image")
     uploaded_file = st.file_uploader("", type=["png", "jpg", "jpeg"])
@@ -248,18 +247,20 @@ with col_right:
             
             st.dataframe(cm_df) # Tampilkan tabel CM
 
-            # Menampilkan Metrik Ringkas
+            # Menampilkan Metrik Ringkas (sesuai permintaan user)
             st.markdown("---")
             st.subheader("Ringkasan Metrik Kinerja")
             
+            # Menampilkan Akurasi Model Test
             st.metric(label="Akurasi Model Test (Offline)", value=f"{ACCURACY_REPORTED:.2f}%", delta="Target Dosen: >80%", delta_color="inverse")
             
+            # Tabel Metrik Tambahan
             metrik_data = {
                 'Metric': ['Average Precision', 'Average Recall', 'F1-Score'],
-                'Value': [f"{33.00:.2f}%", f"{33.00:.2f}%", f"{32.50:.2f}%"] 
+                'Value': [f"{33.00:.2f}%", f"{33.00:.2f}%", f"{32.50:.2f}%"]
             }
             df_metrik = pd.DataFrame(metrik_data)
-            st.table(df_metrik) 
+            st.table(df_metrik)
 
 st.markdown("---")
 st.caption("Proyek ini menggunakan fitur ORB untuk mencocokkan aksara. Jika akurasi rendah, ini adalah batasan metode fitur lokal.")
