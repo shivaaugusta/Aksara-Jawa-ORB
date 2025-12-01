@@ -15,24 +15,21 @@ INDEX_FILE = "orb_index.pkl.gz"
 LABEL_FILE = "label_map.json"
 ORB_N_FEATURES = 250
 RATIO_THRESH = 0.75
-ACCURACY_REPORTED = 39.68 # Akurasi Test Final Anda
+ACCURACY_REPORTED = 39.68 
 
 # Load model dan label saat aplikasi dimulai
 @st.cache_resource
 def load_resources():
     try:
-        # MEMUAT FILE TERKOMPRESI MENGGUNAKAN GZIP
         with gzip.open(INDEX_FILE, "rb") as f: 
             orb_index = pickle.load(f)
             
         with open(LABEL_FILE, "r") as f:
             label_map = json.load(f)
 
-        # Inisialisasi ORB dan Matcher
         orb = cv2.ORB_create(nfeatures=ORB_N_FEATURES)
         bf_knn = cv2.BFMatcher(cv2.NORM_HAMMING, crossCheck=False)
 
-        # Inversi label map (dari ID ke Nama Aksara)
         id_to_label = {v: k for k, v in label_map.items()}
 
         return orb_index, label_map, id_to_label, orb, bf_knn
@@ -99,13 +96,11 @@ def predict_ratio(des_query, index, ratio_thresh, top_k_count):
 
     if not all_scores: return None, []
 
-    # 1. Ambil Top Match Rank 1 (Skor Tertinggi)
     top_results = sorted(all_scores, key=lambda x: x["score"], reverse=True)
     
     predicted_label_id = top_results[0]["label_id"]
     final_prediction = ID_TO_LABEL[predicted_label_id]
     
-    # Ambil Top-K dari slider
     top_k_results = top_results[:top_k_count] 
     
     return final_prediction, top_k_results 
@@ -116,7 +111,7 @@ st.set_page_config(page_title="Identifikasi Aksara Jawa (ORB-Canny)", layout="wi
 st.title("🔠 Identifikasi Aksara Jawa (Metode ORB)")
 st.caption(f"Proyek menggunakan {ORB_N_FEATURES} fitur ORB dengan Rasio Lowe.")
 
-# Struktur 2 Kolom Utama (Meniru Layout Dosen)
+# Struktur 2 Kolom Utama (Lebar Panel Kiri Diperkecil: [1] vs [3])
 col_left, col_right = st.columns([1, 3])
 
 # --- PANEL KIRI: UPLOAD & PENGATURAN ---
@@ -138,118 +133,122 @@ with col_left:
     
     st.button("Submit") # Submit button
     
-# --- PANEL KANAN: RESULTS DAN PREVIEW ---
+# --- PANEL KANAN: RESULTS DAN PREVIEW (Menggunakan Tabs) ---
 with col_right:
-    st.subheader("Results")
     
-    if uploaded_file is not None:
-        if ORB_INDEX is None:
-            st.error("🚨 Model tidak berhasil dimuat! Harap refresh dan pastikan file model ada.")
-            st.stop()
+    # Membuat Tabs untuk memisahkan Tampilan Hasil dan Evaluasi Penuh
+    tab_pred, tab_eval = st.tabs(["✨ LIVE PREDICTION & MATCHES", "📊 FULL EVALUATION (CM & METRICS)"])
+    
+    # --- TAB 1: LIVE PREDICTION & MATCHES ---
+    with tab_pred:
+        st.subheader("Results")
+        
+        if uploaded_file is not None:
+            if ORB_INDEX is None:
+                st.error("🚨 Model tidak berhasil dimuat! Harap refresh dan pastikan file model ada.")
+                st.stop()
 
-        try:
-            pil_img = Image.open(uploaded_file)
-            preprocessed_cv = preprocess_image(pil_img)
-            des_query = extract_orb(preprocessed_cv)
-            
-            # Tampilan Preview: Gabungan Gambar Asli & Proses (COMPACT HORIZONTAL)
-            col_preview, col_proc, col_output = st.columns([1, 1, 1.5])
-            
-            with col_preview:
-                st.markdown("**Query Preview**")
-                # UKURAN GAMBAR DIKECILKAN
-                st.image(pil_img, use_column_width=False, width=180) 
-            
-            with col_proc:
-                st.markdown("**Visualisasi Preprocessing**")
-                # UKURAN GAMBAR DIKECILKAN
-                st.image(preprocessed_cv, caption="Threshold + Deskew + Resize", use_column_width=False, width=180) 
-            
-            with col_output:
-                st.markdown("**Prediction**")
+            try:
+                pil_img = Image.open(uploaded_file)
+                preprocessed_cv = preprocess_image(pil_img)
+                des_query = extract_orb(preprocessed_cv)
                 
-                # JIKA ADA PREDIKSI
+                # Tampilan Preview: Gabungan Gambar Asli & Proses (COMPACT HORIZONTAL)
+                col_preview, col_proc, col_output = st.columns([1, 1, 1.5])
+                
+                with col_preview:
+                    st.markdown("**Query Preview**")
+                    # UKURAN GAMBAR DIKECILKAN
+                    st.image(pil_img, use_column_width=False, width=180) 
+                
+                with col_proc:
+                    st.markdown("**Visualisasi Preprocessing**")
+                    # UKURAN GAMBAR DIKECILKAN
+                    st.image(preprocessed_cv, caption="Threshold + Deskew + Resize", use_column_width=False, width=180) 
+                
+                with col_output:
+                    st.markdown("**Prediction**")
+                    
+                    if des_query is not None and len(des_query) > 0:
+                        final_prediction, top_matches = predict_ratio(des_query, ORB_INDEX, lowe_ratio, top_k) 
+                        st.success(f"**Predicted label:** {final_prediction.upper()}")
+                        st.info(f"Ditemukan {len(des_query)} deskriptor ORB.")
+                    else:
+                        st.warning("⚠️ Gagal mengekstrak fitur ORB.")
+                
+                st.markdown("---") # Pemisah setelah gambar
+                
                 if des_query is not None and len(des_query) > 0:
-                    final_prediction, top_matches = predict_ratio(des_query, ORB_INDEX, lowe_ratio, top_k) 
-                    st.success(f"**Predicted label:** {final_prediction.upper()}")
-                    st.info(f"Ditemukan {len(des_query)} deskriptor ORB.")
-                else:
-                    st.warning("⚠️ Gagal mengekstrak fitur ORB.")
-            
-            st.markdown("---") # Pemisah setelah gambar
-            
-            if des_query is not None and len(des_query) > 0:
-                
-                # --- TAMPILAN TOP MATCHES DETAIL (GRID/KARTU REPLIKA) ---
-                st.subheader("Top Matches Detail")
-                
-                df = pd.DataFrame(top_matches)
-                df['label'] = df['label_id'].apply(lambda x: ID_TO_LABEL[x])
-                df = df.drop(columns=['label_id']).rename(columns={'score': 'Good Matches', 'label': 'Label'})
-                
-                # Menampilkan Kartu Visual
-                cols_match = st.columns(len(df))
-                for i, row in df.iterrows():
-                    with cols_match[i]:
-                        st.markdown(f"**Rank {i+1}**")
-                        st.markdown(f"**{row['Label'].upper()}**")
-                        st.caption(f"Score: {row['Good Matches']} matches")
-                        
-                        # Placeholder Visual
-                        if i == 0:
-                            st.image(preprocessed_cv, caption="Best Match Preview", use_column_width=True)
-                        else:
-                            st.markdown("*(Thumbnail Data Training tidak tersedia)*")
+                    
+                    # --- TAMPILAN TOP MATCHES DETAIL (GRID/KARTU REPLIKA) ---
+                    st.subheader("Top Matches Detail")
+                    
+                    df = pd.DataFrame(top_matches)
+                    df['label'] = df['label_id'].apply(lambda x: ID_TO_LABEL[x])
+                    df = df.drop(columns=['label_id']).rename(columns={'score': 'Good Matches', 'label': 'Label'})
+                    
+                    # Menampilkan Kartu Visual
+                    cols_match = st.columns(len(df))
+                    for i, row in df.iterrows():
+                        with cols_match[i]:
+                            st.markdown(f"**Rank {i+1}**")
+                            st.markdown(f"**{row['Label'].upper()}**")
+                            st.caption(f"Score: {row['Good Matches']} matches")
+                            
+                            if i == 0:
+                                st.image(preprocessed_cv, caption="Best Match Preview", use_column_width=True)
+                            else:
+                                st.markdown("*(Thumbnail Data Training tidak tersedia)*")
 
-            # --- TAMPILAN CONFUSION MATRIX (CM) ---
-            st.markdown("---")
-            st.subheader("Evaluasi Penuh: Confusion Matrix & Metrik")
-            
-            # --- DEFINISI DATA CM STATIS 20x20 ---
-            cm_labels = list(LABEL_MAP.keys()) 
-            cm_data_39_68 = [
-                [ 4,  0,  0,  0,  0,  1,  0,  3,  0,  0,  0,  0,  8,  0,  0,  1,  0,  0,  0,  2], 
-                [ 0, 12,  0,  0,  0,  0,  0,  2,  0,  0,  0,  0,  0,  0,  0,  4,  0,  0,  1,  0], 
-                [ 0,  0, 14,  0,  0,  0,  0,  4,  0,  0,  0,  0,  0,  0,  0,  1,  0,  0,  0,  0], 
-                [ 0,  0,  0, 14,  0,  0,  0,  1,  0,  2,  0,  0,  0,  0,  0,  1,  0,  0,  1,  0], 
-                [ 2,  0,  0,  0,  1,  1,  0,  8,  0,  1,  0,  0,  1,  0,  0,  4,  0,  0,  0,  1], 
-                [ 1,  0,  0,  0,  0,  4,  0,  4,  1,  0,  0,  0,  0,  0,  0,  9,  0,  0,  0,  0], 
-                [ 0,  0,  0,  0,  0,  0,  9,  2,  0,  0,  0,  0,  0,  0,  0,  6,  0,  0,  1,  0], 
-                [ 0,  0,  0,  0,  0,  0,  0, 17,  0,  0,  1,  0,  1,  0,  0,  0,  0,  0,  0,  0], 
-                [ 0,  0,  0,  0,  0,  3,  0,  7,  3,  0,  2,  0,  0,  0,  0,  2,  0,  0,  0,  2], 
-                [ 0,  1,  0,  1,  0,  0,  0,  0,  1,  9,  0,  0,  0,  1,  0,  4,  0,  0,  2,  1], 
-                [ 0,  0,  0,  0,  0,  0,  0, 16,  0,  0,  3,  0,  0,  0,  0,  0,  0,  0,  0,  0], 
-                [ 5,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  7,  2,  0,  0,  3,  0,  1,  0,  1], 
-                [ 0,  1,  0,  0,  0,  0,  0,  4,  0,  0,  0,  1, 11,  0,  0,  2,  0,  0,  0,  0], 
-                [ 0,  0,  0,  0,  0,  1,  0,  4,  0,  0,  0,  0,  0,  0,  0, 13,  0,  0,  0,  1], 
-                [ 3,  2,  0,  0,  0,  1,  0,  2,  0,  3,  0,  0,  2,  0,  0,  4,  0,  0,  2,  0], 
-                [ 0,  4,  0,  0,  0,  0,  0,  1,  0,  0,  0,  0,  0,  0,  0, 13,  0,  0,  0,  1], 
-                [ 0,  0,  0,  0,  0,  0,  0,  6,  0,  0,  0,  0,  0,  1,  0,  5,  6,  0,  1,  0], 
-                [ 0,  3,  1,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  3,  0, 10,  0,  1], 
-                [ 0,  0,  0,  0,  0,  0,  0,  3,  0,  0,  0,  0,  0,  1,  0,  7,  0,  0,  8,  0], 
-                [ 0,  0,  0,  1,  0,  2,  1,  2,  1,  0,  0,  0,  0,  1,  0,  5,  0,  0,  1,  5]
-            ]
-            
-            cm_df = pd.DataFrame(data=np.array(cm_data_39_68), columns=cm_labels)
-            cm_df.insert(0, 'GT \ Pred', cm_labels) 
+            except Exception as e:
+                st.error(f"Terjadi kesalahan saat memproses gambar: {e}")
 
-            st.markdown("""
-            #### 📊 Confusion Matrix (CM) Mentah 20x20
-            Angka-angka di bawah ini adalah hasil evaluasi penuh model pada data test:
-            """)
-            
-            st.dataframe(cm_df) # Tampilkan tabel CM
+    # --- TAB 2: FULL EVALUATION (CM & METRICS) ---
+    with tab_eval:
+        st.subheader("Evaluasi Penuh: Confusion Matrix & Metrik")
+        
+        # --- DEFINISI DATA CM STATIS 20x20 ---
+        cm_labels = list(LABEL_MAP.keys()) 
+        cm_data_39_68 = [
+            [ 4,  0,  0,  0,  0,  1,  0,  3,  0,  0,  0,  0,  8,  0,  0,  1,  0,  0,  0,  2], 
+            [ 0, 12,  0,  0,  0,  0,  0,  2,  0,  0,  0,  0,  0,  0,  0,  4,  0,  0,  1,  0], 
+            [ 0,  0, 14,  0,  0,  0,  0,  4,  0,  0,  0,  0,  0,  0,  0,  1,  0,  0,  0,  0], 
+            [ 0,  0,  0, 14,  0,  0,  0,  1,  0,  2,  0,  0,  0,  0,  0,  1,  0,  0,  1,  0], 
+            [ 2,  0,  0,  0,  1,  1,  0,  8,  0,  1,  0,  0,  1,  0,  0,  4,  0,  0,  0,  1], 
+            [ 1,  0,  0,  0,  0,  4,  0,  4,  1,  0,  0,  0,  0,  0,  0,  9,  0,  0,  0,  0], 
+            [ 0,  0,  0,  0,  0,  0,  9,  2,  0,  0,  0,  0,  0,  0,  0,  6,  0,  0,  1,  0], 
+            [ 0,  0,  0,  0,  0,  0,  0, 17,  0,  0,  1,  0,  1,  0,  0,  0,  0,  0,  0,  0], 
+            [ 0,  0,  0,  0,  0,  3,  0,  7,  3,  0,  2,  0,  0,  0,  0,  2,  0,  0,  0,  2], 
+            [ 0,  1,  0,  1,  0,  0,  0,  0,  1,  9,  0,  0,  0,  1,  0,  4,  0,  0,  2,  1], 
+            [ 0,  0,  0,  0,  0,  0,  0, 16,  0,  0,  3,  0,  0,  0,  0,  0,  0,  0,  0,  0], 
+            [ 5,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  7,  2,  0,  0,  3,  0,  1,  0,  1], 
+            [ 0,  1,  0,  0,  0,  0,  0,  4,  0,  0,  0,  1, 11,  0,  0,  2,  0,  0,  0,  0], 
+            [ 0,  0,  0,  0,  0,  1,  0,  4,  0,  0,  0,  0,  0,  0,  0, 13,  0,  0,  0,  1], 
+            [ 3,  2,  0,  0,  0,  1,  0,  2,  0,  3,  0,  0,  2,  0,  0,  4,  0,  0,  2,  0], 
+            [ 0,  4,  0,  0,  0,  0,  0,  1,  0,  0,  0,  0,  0,  0,  0, 13,  0,  0,  0,  1], 
+            [ 0,  0,  0,  0,  0,  0,  0,  6,  0,  0,  0,  0,  0,  1,  0,  5,  6,  0,  1,  0], 
+            [ 0,  3,  1,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  3,  0, 10,  0,  1], 
+            [ 0,  0,  0,  0,  0,  0,  0,  3,  0,  0,  0,  0,  0,  1,  0,  7,  0,  0,  8,  0], 
+            [ 0,  0,  0,  1,  0,  2,  1,  2,  1,  0,  0,  0,  0,  1,  0,  5,  0,  0,  1,  5]
+        ]
+        
+        cm_df = pd.DataFrame(data=np.array(cm_data_39_68), columns=cm_labels)
+        cm_df.insert(0, 'GT \ Pred', cm_labels) 
 
-            # Menampilkan Metrik Ringkas (Ringkasan Kinerja)
-            st.markdown("---")
-            st.subheader("Ringkasan Metrik Kinerja")
-            
-            st.markdown("""
-            *Catatan: Nilai Akurasi, Precision, dan Recall terperinci dari CM ini tersedia di laporan.*
-            """)
+        st.markdown("""
+        #### 📊 Confusion Matrix (CM) Mentah 20x20
+        Angka-angka di bawah ini adalah hasil evaluasi penuh model pada data test:
+        """)
+        
+        st.dataframe(cm_df) # Tampilkan tabel CM
 
-        except Exception as e:
-            st.error(f"Terjadi kesalahan saat memproses gambar: {e}")
+        # Menampilkan Metrik Ringkas (TIDAK ADA ANGKA ACCURACY ATAU PERSEN)
+        st.markdown("---")
+        st.subheader("Ringkasan Metrik Kinerja")
+        
+        st.markdown("""
+        *Catatan: Nilai Akurasi, Precision, dan Recall terperinci dari CM ini tersedia di laporan.*
+        """)
 
 st.markdown("---")
 st.caption("Proyek ini menggunakan fitur ORB untuk mencocokkan aksara. Jika akurasi rendah, ini adalah batasan metode fitur lokal.")
