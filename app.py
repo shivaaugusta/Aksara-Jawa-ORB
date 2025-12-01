@@ -15,24 +15,21 @@ INDEX_FILE = "orb_index.pkl.gz"
 LABEL_FILE = "label_map.json"
 ORB_N_FEATURES = 250
 RATIO_THRESH = 0.75
-ACCURACY_REPORTED = 39.68 # Akurasi Test Final Anda
+ACCURACY_REPORTED = 39.68 
 
 # Load model dan label saat aplikasi dimulai
 @st.cache_resource
 def load_resources():
     try:
-        # MEMUAT FILE TERKOMPRESI MENGGUNAKAN GZIP
         with gzip.open(INDEX_FILE, "rb") as f: 
             orb_index = pickle.load(f)
             
         with open(LABEL_FILE, "r") as f:
             label_map = json.load(f)
 
-        # Inisialisasi ORB dan Matcher
         orb = cv2.ORB_create(nfeatures=ORB_N_FEATURES)
         bf_knn = cv2.BFMatcher(cv2.NORM_HAMMING, crossCheck=False)
 
-        # Inversi label map (dari ID ke Nama Aksara)
         id_to_label = {v: k for k, v in label_map.items()}
 
         return orb_index, label_map, id_to_label, orb, bf_knn
@@ -113,14 +110,17 @@ def predict_ratio(des_query, index, ratio_thresh, top_k_count):
 # --- 3. APLIKASI STREAMLIT UTAMA ---
 st.set_page_config(page_title="Identifikasi Aksara Jawa (ORB-Canny)", layout="wide")
 
-st.title("🔠 Identifikasi Aksara Jawa (Metode ORB)")
-st.caption(f"Proyek menggunakan {ORB_N_FEATURES} fitur ORB dengan Rasio Lowe.")
-
 # Struktur 2 Kolom Utama (Lebar Panel Kiri Diperkecil: [1] vs [3])
 col_left, col_right = st.columns([1, 3])
 
 # --- PANEL KIRI: UPLOAD & PENGATURAN ---
 with col_left:
+    # --- HEADER DIPINDAH KE SINI (Sesuai Permintaan Dosen) ---
+    st.title("🔠 Identifikasi Aksara Jawa (Metode ORB)")
+    st.caption(f"Proyek menggunakan {ORB_N_FEATURES} fitur ORB dengan Rasio Lowe.")
+    st.markdown("---") 
+    # -----------------------------------------------------------
+
     st.subheader("Upload Query Image")
     uploaded_file = st.file_uploader("", type=["png", "jpg", "jpeg"])
 
@@ -233,25 +233,25 @@ with col_right:
             [ 0,  3,  1,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  3,  0, 10,  0,  1], 
             [ 0,  0,  0,  0,  0,  0,  0,  3,  0,  0,  0,  0,  0,  1,  0,  7,  0,  0,  8,  0], 
             [ 0,  0,  0,  1,  0,  2,  1,  2,  1,  0,  0,  0,  0,  1,  0,  5,  0,  0,  1,  5]
-            ]
-            
-            cm_df = pd.DataFrame(data=np.array(cm_data_39_68), columns=cm_labels)
-            cm_df.insert(0, 'GT \ Pred', cm_labels) 
+        ]
+        
+        cm_df = pd.DataFrame(data=np.array(cm_data_39_68), columns=cm_labels)
+        cm_df.insert(0, 'GT \ Pred', cm_labels) 
 
-            st.markdown("""
-            #### 📊 Confusion Matrix (CM) Mentah 20x20
-            Angka-angka di bawah ini adalah hasil evaluasi penuh model pada data test:
-            """)
-            
-            st.dataframe(cm_df) # Tampilkan tabel CM
+        st.markdown("""
+        #### 📊 Confusion Matrix (CM) Mentah 20x20
+        Angka-angka di bawah ini adalah hasil evaluasi penuh model pada data test:
+        """)
+        
+        st.dataframe(cm_df) # Tampilkan tabel CM
 
-            # Menampilkan Metrik Ringkas (TIDAK ADA ANGKA ACCURACY ATAU PERSEN)
-            st.markdown("---")
-            st.subheader("Ringkasan Metrik Kinerja")
-            
-            st.markdown("""
-            *Catatan: Nilai Akurasi, Precision, dan Recall terperinci dari CM ini tersedia di laporan.*
-            """)
+        # Menampilkan Metrik Ringkas (Ringkasan Kinerja)
+        st.markdown("---")
+        st.subheader("Ringkasan Metrik Kinerja")
+        
+        st.markdown("""
+        *Catatan: Nilai Akurasi, Precision, dan Recall terperinci dari CM ini tersedia di laporan.*
+        """)
 
 st.markdown("---")
 st.caption("Proyek ini menggunakan fitur ORB untuk mencocokkan aksara. Jika akurasi rendah, ini adalah batasan metode fitur lokal.")
