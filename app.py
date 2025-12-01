@@ -110,6 +110,9 @@ def predict_ratio(des_query, index, ratio_thresh, top_k_count):
 # --- 3. APLIKASI STREAMLIT UTAMA ---
 st.set_page_config(page_title="Identifikasi Aksara Jawa (ORB-Canny)", layout="wide")
 
+st.title("🔠 Identifikasi Aksara Jawa (Metode ORB)")
+st.caption(f"Proyek menggunakan {ORB_N_FEATURES} fitur ORB dengan Rasio Lowe.")
+
 # Struktur 2 Kolom Utama (Lebar Panel Kiri Diperkecil: [1] vs [3])
 col_left, col_right = st.columns([1, 3])
 
@@ -235,7 +238,8 @@ with col_right:
             [ 0,  0,  0,  1,  0,  2,  1,  2,  1,  0,  0,  0,  0,  1,  0,  5,  0,  0,  1,  5]
             ]
             
-            cm_df = pd.DataFrame(data=np.array(cm_data_39_68), columns=cm_labels)
+            # --- FIX INDENTATION: Baris ini harus sejajar dengan kode sekitarnya ---
+            cm_df = pd.DataFrame(data=np.array(cm_data_39_68), columns=cm_labels) 
             cm_df.insert(0, 'GT \ Pred', cm_labels) 
 
             st.markdown("""
