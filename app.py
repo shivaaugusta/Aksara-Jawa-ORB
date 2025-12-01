@@ -1,81 +1,72 @@
-import streamlit as st
-import pandas as pd
-import numpy as np
+# --- PANEL KIRI: UPLOAD & PENGATURAN ---
+with col_left:
+    st.subheader("Upload Query Image")
+    uploaded_file = st.file_uploader("", type=["png", "jpg", "jpeg"])
 
-st.set_page_config(layout="wide")
+    st.markdown("---")
+    st.subheader("Pengaturan Pencocokan")
 
-# Dummy label untuk testing
-LABEL_MAP = {i: f"Class {i}" for i in range(20)}
+    lowe_ratio = st.slider("Lowe ratio", min_value=0.1, max_value=1.0, value=0.75, step=0.01)
+    top_k = st.slider("Top-K", min_value=1, max_value=20, value=5, step=1)
+    unknown_threshold = st.slider("Unknown threshold", min_value=0.01, max_value=0.5, value=0.05, step=0.01)
 
-st.title("Aksara Jawa Classifier (Demo UI)")
+    # Submit → Trigger tampil output
+    submitted = st.button("📌 Submit")
 
-st.markdown("""
-<style>
-.block-container {
-    padding-top: 1rem;
-    max-height: 95vh;
-    overflow: hidden;
-}
-footer {visibility: hidden;}
-</style>
-""", unsafe_allow_html=True)
 
-# Konten utama
-st.subheader("Upload Gambar")
-st.file_uploader("Pilih gambar...", type=["jpg", "png", "jpeg"])
+# --- PANEL KANAN: RESULTS ---
+with col_right:
+    st.subheader("Results")
 
-st.success("UI Loaded Successfully 🎯")
+    # Hanya tampil jika user menekan Submit
+    if submitted:
 
-# State modal
-if "show_eval" not in st.session_state:
-    st.session_state.show_eval = False
+        if uploaded_file is None:
+            st.warning("⚠️ Upload gambar terlebih dahulu sebelum submit!")
+            st.stop()
 
-def open_eval():
-    st.session_state.show_eval = True
+        if ORB_INDEX is None:
+            st.error("🚨 Model tidak berhasil dimuat! Cek file model.")
+            st.stop()
 
-st.button("📊 Lihat Evaluasi Model", on_click=open_eval)
+        try:
+            pil_img = Image.open(uploaded_file)
+            preprocessed_cv = preprocess_image(pil_img)
+            des_query = extract_orb(preprocessed_cv)
 
-# Popup Modal
-if st.session_state.show_eval:
-    st.markdown("""
-    <style>
-    .popup {
-        position: fixed;
-        top: 5%;
-        left: 50%;
-        transform: translateX(-50%);
-        background: white;
-        width: 90%;
-        height: 90%;
-        padding: 20px;
-        border-radius: 12px;
-        box-shadow: 0 0 20px rgba(0,0,0,0.35);
-        z-index: 9999;
-        overflow-y: auto;
-    }
-    .close-btn {
-        position: absolute;
-        top:10px;
-        right:20px;
-    }
-    </style>
-    """, unsafe_allow_html=True)
+            col_preview, col_proc = st.columns(2)
 
-    st.markdown('<div class="popup">', unsafe_allow_html=True)
+            with col_preview:
+                st.markdown("**Query Preview**")
+                st.image(pil_img)
 
-    if st.button("❌ Tutup"):
-        st.session_state.show_eval = False
+            with col_proc:
+                st.markdown("**Visualisasi Preprocessing**")
+                st.image(preprocessed_cv, caption="Threshold + Deskew + Resize")
 
-    st.header("Evaluasi Model")
+            st.markdown("---")
 
-    # Dummy confusion matrix
-    cm_data = np.zeros((20, 20))
-    st.dataframe(pd.DataFrame(cm_data, columns=LABEL_MAP.values()))
+            if des_query is None or len(des_query) == 0:
+                st.warning("⚠️ Fitur ORB tidak terdeteksi!")
+                st.stop()
 
-    st.subheader("📈 Metrik Model")
-    st.table(pd.DataFrame({
-        "Metric": ["Precision", "Recall", "F1-Score"],
-        "Value": ["33%", "33%", "32.5%"]
-    }))
+            final_prediction, top_matches = predict_ratio(des_query, ORB_INDEX, lowe_ratio, top_k)
 
-    st.markdown("</div>", unsafe_allow_html=True)
+            st.success(f"Hasil Prediksi: **{final_prediction.upper()}**")
+            st.info(f"Fitur ORB ditemukan: {len(des_query)}")
+
+            # Top-K Tabel saja (no card grid → hemat space)
+            df = pd.DataFrame(top_matches)
+            df['Label'] = df['label_id'].apply(lambda x: ID_TO_LABEL[x])
+            df = df[['Label', 'score']]
+            df.columns = ["Label", "Good Matches"]
+
+            st.markdown("**Top Matching Results**")
+            st.table(df)
+
+            st.markdown("---")
+            st.markdown("📊 *Confusion Matrix bisa dilihat pada halaman Evaluasi Model*")
+
+        except Exception as e:
+            st.error(f"Error: {e}")
+
