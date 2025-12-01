@@ -15,7 +15,7 @@ INDEX_FILE = "orb_index.pkl.gz"
 LABEL_FILE = "label_map.json"
 ORB_N_FEATURES = 250
 RATIO_THRESH = 0.75
-ACCURACY_REPORTED = 39.68 # Akurasi Test Final Anda
+ACCURACY_REPORTED = 39.68 
 
 # Load model dan label saat aplikasi dimulai
 @st.cache_resource
@@ -79,6 +79,7 @@ def extract_orb(image):
 def predict_ratio(des_query, index, ratio_thresh, top_k_count):
     """Fungsi Prediksi menggunakan Rasio Lowe dan mengembalikan Rank 1 dan Top-K."""
     all_scores = []
+    max_possible_matches = ORB_N_FEATURES 
     
     for des_train, label_id in index:
         try:
@@ -90,7 +91,9 @@ def predict_ratio(des_query, index, ratio_thresh, top_k_count):
                 if m.distance < ratio_thresh * n.distance: 
                     good_matches += 1
             
-            all_scores.append({"score": good_matches, "label_id": label_id})
+            score_percent = (good_matches / max_possible_matches) * 100 
+            
+            all_scores.append({"score": good_matches, "score_percent": score_percent, "label_id": label_id})
         except:
             continue
 
@@ -191,7 +194,12 @@ with col_right:
                     
                     df = pd.DataFrame(top_matches)
                     df['label'] = df['label_id'].apply(lambda x: ID_TO_LABEL[x])
-                    df = df.drop(columns=['label_id']).rename(columns={'score': 'Good Matches', 'label': 'Label'})
+                    
+                    # HITUNG DAN TAMBAH KOLOM PERSENTASE BARU
+                    df['Score (%)'] = df['score_percent'].apply(lambda x: f"{x:.2f}%") 
+                    
+                    # Bersihkan Kolom
+                    df = df.drop(columns=['label_id', 'score_percent']).rename(columns={'score': 'Good Matches', 'label': 'Label'})
                     
                     # Menampilkan Kartu Visual
                     cols_match = st.columns(len(df))
@@ -199,7 +207,10 @@ with col_right:
                         with cols_match[i]:
                             st.markdown(f"**Rank {i+1}**")
                             st.markdown(f"**{row['Label'].upper()}**")
-                            st.caption(f"Score: {row['Good Matches']} matches")
+                            
+                            # Tampilkan Score Persen
+                            st.caption(f"**{row['Score (%)']}**") 
+                            st.caption(f"({row['Good Matches']} matches)") 
                             
                             if i == 0:
                                 st.image(preprocessed_cv, caption="Best Match Preview", use_column_width=True)
