@@ -1,4 +1,4 @@
-# app.py (Final Deployment Version - Clean and Complete)
+# app.py (Final Deployment Version - Bug Fixed)
 
 import streamlit as st
 import cv2
@@ -41,7 +41,8 @@ def load_resources():
     except Exception as e:
         return None, None, None, None, None
 
-ORB_INDEX, LABEL_MAP, ID_TO_ID_LABEL, ORB, BF_KNN = load_resources()
+# Ekstrak semua variabel global dari load_resources()
+ORB_INDEX, LABEL_MAP, ID_TO_LABEL, ORB, BF_KNN = load_resources() 
 
 # --- 2. UTILITY FUNCTIONS ---
 
@@ -102,8 +103,9 @@ def predict_ratio(des_query, index, ratio_thresh, top_k_count):
     # 1. Ambil Top Match Rank 1 (Skor Tertinggi)
     top_results = sorted(all_scores, key=lambda x: x["score"], reverse=True)
     
+    # MENGGUNAKAN ID_TO_LABEL GLOBAL
     predicted_label_id = top_results[0]["label_id"]
-    final_prediction = ID_TO_LABEL[predicted_label_id]
+    final_prediction = ID_TO_LABEL[predicted_label_id] 
     
     # Ambil Top-K dari slider
     top_k_results = top_results[:top_k_count] 
@@ -113,16 +115,14 @@ def predict_ratio(des_query, index, ratio_thresh, top_k_count):
 # --- 3. APLIKASI STREAMLIT UTAMA ---
 st.set_page_config(page_title="Identifikasi Aksara Jawa (ORB-Canny)", layout="wide")
 
+st.title("🔠 Identifikasi Aksara Jawa (Metode ORB)")
+st.caption(f"Proyek menggunakan {ORB_N_FEATURES} fitur ORB dengan Rasio Lowe.")
+
 # Struktur 2 Kolom Utama (Lebar Panel Kiri Diperkecil: [1] vs [3])
 col_left, col_right = st.columns([1, 3])
 
 # --- PANEL KIRI: UPLOAD & PENGATURAN ---
 with col_left:
-    # MEMADATKAN HEADER DI SINI
-    st.subheader("🔠 Identifikasi Aksara Jawa (Metode ORB)")
-    st.caption(f"Proyek menggunakan {ORB_N_FEATURES} fitur ORB dengan Rasio Lowe.")
-    st.markdown("---") 
-
     st.subheader("Upload Query Image")
     uploaded_file = st.file_uploader("", type=["png", "jpg", "jpeg"])
 
@@ -235,25 +235,25 @@ with col_right:
             [ 0,  3,  1,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  3,  0, 10,  0,  1], 
             [ 0,  0,  0,  0,  0,  0,  0,  3,  0,  0,  0,  0,  0,  1,  0,  7,  0,  0,  8,  0], 
             [ 0,  0,  0,  1,  0,  2,  1,  2,  1,  0,  0,  0,  0,  1,  0,  5,  0,  0,  1,  5]
-        ]
-        
-        cm_df = pd.DataFrame(data=np.array(cm_data_39_68), columns=cm_labels)
-        cm_df.insert(0, 'GT \ Pred', cm_labels) 
+            ]
+            
+            cm_df = pd.DataFrame(data=np.array(cm_data_39_68), columns=cm_labels)
+            cm_df.insert(0, 'GT \ Pred', cm_labels) 
 
-        st.markdown("""
-        #### 📊 Confusion Matrix (CM) Mentah 20x20
-        Angka-angka di bawah ini adalah hasil evaluasi penuh model pada data test:
-        """)
-        
-        st.dataframe(cm_df) # Tampilkan tabel CM
+            st.markdown("""
+            #### 📊 Confusion Matrix (CM) Mentah 20x20
+            Angka-angka di bawah ini adalah hasil evaluasi penuh model pada data test:
+            """)
+            
+            st.dataframe(cm_df) # Tampilkan tabel CM
 
-        # Menampilkan Metrik Ringkas (Ringkasan Kinerja)
-        st.markdown("---")
-        st.subheader("Ringkasan Metrik Kinerja")
-        
-        st.markdown("""
-        *Catatan: Nilai Akurasi, Precision, dan Recall terperinci dari CM ini tersedia di laporan.*
-        """)
+            # Menampilkan Metrik Ringkas (TIDAK ADA ANGKA ACCURACY ATAU PERSEN)
+            st.markdown("---")
+            st.subheader("Ringkasan Metrik Kinerja")
+            
+            st.markdown("""
+            *Catatan: Nilai Akurasi, Precision, dan Recall terperinci dari CM ini tersedia di laporan.*
+            """)
 
 st.markdown("---")
 st.caption("Proyek ini menggunakan fitur ORB untuk mencocokkan aksara. Jika akurasi rendah, ini adalah batasan metode fitur lokal.")
