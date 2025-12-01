@@ -1,4 +1,4 @@
-# app.py (Final Deployment Version - Clean and Complete)
+# app.py (Final Deployment Version - Fix Indentation Kritis)
 
 import streamlit as st
 import cv2
@@ -15,7 +15,7 @@ INDEX_FILE = "orb_index.pkl.gz"
 LABEL_FILE = "label_map.json"
 ORB_N_FEATURES = 250
 RATIO_THRESH = 0.75
-ACCURACY_REPORTED = 39.68 # Akurasi Test Final Anda
+ACCURACY_REPORTED = 39.68 
 
 # Load model dan label saat aplikasi dimulai
 @st.cache_resource
