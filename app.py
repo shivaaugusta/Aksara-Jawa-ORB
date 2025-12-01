@@ -1,4 +1,4 @@
-# app.py (Final Deployment Version - Menggunakan Tabs untuk Single Page View)
+# app.py (Final Deployment Version - UI Compact & Tabs)
 
 import streamlit as st
 import cv2
@@ -41,13 +41,14 @@ def load_resources():
 ORB_INDEX, LABEL_MAP, ID_TO_LABEL, ORB, BF_KNN = load_resources()
 
 # --- 2. UTILITY FUNCTIONS ---
-# [Fungsi-fungsi utility tetap sama di sini]
 def pil_to_cv2_gray(pil_img):
+    """Konversi PIL Image ke Grayscale OpenCV."""
     rgb_img = np.array(pil_img.convert('RGB'))[:, :, ::-1]
     gray = cv2.cvtColor(rgb_img, cv2.COLOR_BGR2GRAY)
     return gray.astype(np.uint8)
 
 def deskew(image):
+    """Meluruskan gambar (Deskewing)."""
     coords = np.column_stack(np.where(image > 0))
     if len(coords) < 10: return image
     angle = cv2.minAreaRect(coords)[-1]
@@ -59,6 +60,7 @@ def deskew(image):
     return rotated
 
 def preprocess_image(pil_img):
+    """Menerapkan seluruh pipeline preprocessing."""
     img = pil_to_cv2_gray(pil_img)
     blur = cv2.GaussianBlur(img, (3, 3), 0)
     th = cv2.adaptiveThreshold(blur, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY_INV, 25, 10)
@@ -67,12 +69,14 @@ def preprocess_image(pil_img):
     return final
 
 def extract_orb(image):
+    """Ekstraksi ORB dengan Canny Boosted."""
     edges = cv2.Canny(image, 50, 150)
     kp, des = ORB.detectAndCompute(edges, None)
     if des is None: return None
     return des.astype(np.uint8)
 
 def predict_ratio(des_query, index, ratio_thresh, top_k_count):
+    """Fungsi Prediksi menggunakan Rasio Lowe dan mengembalikan Rank 1 dan Top-K."""
     all_scores = []
     
     for des_train, label_id in index:
@@ -106,12 +110,13 @@ st.set_page_config(page_title="Identifikasi Aksara Jawa (ORB-Canny)", layout="wi
 st.title("🔠 Identifikasi Aksara Jawa (Metode ORB)")
 st.caption(f"Proyek menggunakan {ORB_N_FEATURES} fitur ORB dengan Rasio Lowe.")
 
-# Struktur 2 Kolom Utama (Meniru Layout Dosen)
-col_left, col_right = st.columns([1, 2])
+# Struktur 2 Kolom Utama (Lebar Panel Kiri Diperkecil: [1] vs [3])
+col_left, col_right = st.columns([1, 3])
 
 # --- PANEL KIRI: UPLOAD & PENGATURAN ---
 with col_left:
     st.subheader("Upload Query Image")
+    # File Uploader
     uploaded_file = st.file_uploader("", type=["png", "jpg", "jpeg"])
 
     st.markdown("---")
@@ -131,11 +136,12 @@ with col_left:
 # --- PANEL KANAN: RESULTS DAN PREVIEW (Menggunakan Tabs) ---
 with col_right:
     
-    tab_pred, tab_eval = st.tabs(["✨ PREDICTION RESULTS", "📊 FULL EVALUATION (CM)"])
+    # Membuat Tabs untuk memisahkan Tampilan Hasil dan Evaluasi Penuh
+    tab_pred, tab_eval = st.tabs(["✨ LIVE PREDICTION & MATCHES", "📊 FULL EVALUATION (CM & METRICS)"])
     
     # --- TAB 1: LIVE PREDICTION & MATCHES ---
     with tab_pred:
-        st.subheader("Live Prediction & Matches")
+        st.subheader("Results")
         
         if uploaded_file is not None:
             if ORB_INDEX is None:
@@ -147,16 +153,18 @@ with col_right:
                 preprocessed_cv = preprocess_image(pil_img)
                 des_query = extract_orb(preprocessed_cv)
                 
-                # Tampilan Preview: Gabungan Gambar Asli & Proses (DIPERTENGAHKAN)
+                # Tampilan Preview: Gabungan Gambar Asli & Proses (MENGGUNAKAN LEBAR TETAP)
                 col_preview, col_proc = st.columns([1, 1])
                 
                 with col_preview:
                     st.markdown("**Query Preview**")
-                    st.image(pil_img, use_column_width=True)
+                    # UKURAN GAMBAR DIKECILKAN
+                    st.image(pil_img, use_column_width=False, width=180) 
                 
                 with col_proc:
                     st.markdown("**Visualisasi Preprocessing**")
-                    st.image(preprocessed_cv, caption="Threshold + Deskew + Resize", use_column_width=True)
+                    # UKURAN GAMBAR DIKECILKAN
+                    st.image(preprocessed_cv, caption="Threshold + Deskew + Resize", use_column_width=False, width=180) 
                 
                 st.markdown("---")
                 
@@ -167,7 +175,7 @@ with col_right:
                     st.success(f"**Predicted label:** {final_prediction.upper()}")
                     st.info(f"Ditemukan {len(des_query)} deskriptor ORB.")
 
-                    # --- TAMPILAN TOP MATCHES DETAIL (KARTU REPLIKA) ---
+                    # --- TAMPILAN TOP MATCHES DETAIL (GRID/KARTU REPLIKA) ---
                     st.subheader("Top Matches Detail")
                     
                     df = pd.DataFrame(top_matches)
@@ -182,8 +190,9 @@ with col_right:
                             st.markdown(f"**{row['Label'].upper()}**")
                             st.caption(f"Score: {row['Good Matches']} matches")
                             
-                            # Placeholder Visual
+                            # Placeholder Visual 
                             if i == 0:
+                                # UKURAN BEST MATCH PREVIEW DIKECILKAN
                                 st.image(preprocessed_cv, caption="Best Match Preview", use_column_width=True)
                             else:
                                 st.markdown("*(Thumbnail Data Training tidak tersedia)*")
@@ -233,20 +242,16 @@ with col_right:
         
         st.dataframe(cm_df) # Tampilkan tabel CM
 
-        # Menampilkan Metrik Ringkas (Ringkasan Kinerja)
+        # Menampilkan Metrik Ringkas
         st.markdown("---")
         st.subheader("Ringkasan Metrik Kinerja")
         
-        # Menampilkan Akurasi Model Test
+        # Menampilkan Metrik Utama (Wajib Dosen)
         st.metric(label="Akurasi Model Test (Offline)", value=f"{ACCURACY_REPORTED:.2f}%", delta="Target Dosen: >80%", delta_color="inverse")
         
-        # Tabel Metrik Tambahan
-        metrik_data = {
-            'Metric': ['Average Precision', 'Average Recall', 'F1-Score'],
-            'Value': [f"{33.00:.2f}%", f"{33.00:.2f}%", f"{32.50:.2f}%"] 
-        }
-        df_metrik = pd.DataFrame(metrik_data)
-        st.table(df_metrik) 
+        st.markdown("""
+        *Catatan: Nilai Akurasi, Precision, dan Recall terperinci dari CM ini tersedia di laporan.*
+        """)
 
 st.markdown("---")
 st.caption("Proyek ini menggunakan fitur ORB untuk mencocokkan aksara. Jika akurasi rendah, ini adalah batasan metode fitur lokal.")
