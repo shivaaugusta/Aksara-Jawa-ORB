@@ -1,4 +1,4 @@
-# app.py (Final Deployment Version - UI Compact & Tabs)
+# app.py (Final Deployment Version - Anti-Scroll Optimized)
 
 import streamlit as st
 import cv2
@@ -116,19 +116,13 @@ col_left, col_right = st.columns([1, 3])
 # --- PANEL KIRI: UPLOAD & PENGATURAN ---
 with col_left:
     st.subheader("Upload Query Image")
-    # File Uploader
     uploaded_file = st.file_uploader("", type=["png", "jpg", "jpeg"])
 
     st.markdown("---")
     st.subheader("Pengaturan Pencocokan")
 
-    # SLIDER LOWE RATIO (Parameter aktif)
     lowe_ratio = st.slider("Lowe ratio", min_value=0.1, max_value=1.0, value=0.75, step=0.01)
-    
-    # SLIDER TOP-K (Parameter aktif)
     top_k = st.slider("Top-K", min_value=1, max_value=20, value=5, step=1)
-
-    # UNKNOWN THRESHOLD (Dipertahankan untuk replikasi UI)
     unknown_threshold = st.slider("Unknown threshold", min_value=0.01, max_value=0.5, value=0.05, step=0.01)
     
     st.button("Submit") # Submit button
@@ -153,36 +147,38 @@ with col_right:
                 preprocessed_cv = preprocess_image(pil_img)
                 des_query = extract_orb(preprocessed_cv)
                 
-                # Tampilan Preview: Gabungan Gambar Asli & Proses (MENGGUNAKAN LEBAR TETAP)
-                col_preview, col_proc = st.columns([1, 1])
+                # --- Perubahan di sini: MENGGABUNGKAN PREVIEW KE SATU BARIS ---
+                col_preview, col_proc, col_output = st.columns([1, 1, 1.5])
                 
+                # OUTPUT GAMBAR ASLI
                 with col_preview:
                     st.markdown("**Query Preview**")
-                    # UKURAN GAMBAR DIKECILKAN
                     st.image(pil_img, use_column_width=False, width=180) 
                 
+                # OUTPUT VISUALISASI PREPROCESSING
                 with col_proc:
                     st.markdown("**Visualisasi Preprocessing**")
-                    # UKURAN GAMBAR DIKECILKAN
                     st.image(preprocessed_cv, caption="Threshold + Deskew + Resize", use_column_width=False, width=180) 
                 
-                st.markdown("---")
+                # OUTPUT UTAMA PREDIKSI (Diletakkan di kolom ketiga, di samping gambar)
+                with col_output:
+                    st.markdown("**Prediction**")
+                    st.success(f"**Predicted label:** {final_prediction.upper()}")
+                    st.info(f"Ditemukan {len(des_query)} deskriptor ORB.")
+
+                st.markdown("---") # Garis pemisah sebelum Top Matches
                 
                 if des_query is not None and len(des_query) > 0:
                     final_prediction, top_matches = predict_ratio(des_query, ORB_INDEX, lowe_ratio, top_k) 
                     
-                    # OUTPUT UTAMA
-                    st.success(f"**Predicted label:** {final_prediction.upper()}")
-                    st.info(f"Ditemukan {len(des_query)} deskriptor ORB.")
-
-                    # --- TAMPILAN TOP MATCHES DETAIL (GRID/KARTU REPLIKA) ---
+                    # --- TAMPILAN TOP MATCHES DETAIL ---
                     st.subheader("Top Matches Detail")
                     
                     df = pd.DataFrame(top_matches)
                     df['label'] = df['label_id'].apply(lambda x: ID_TO_LABEL[x])
                     df = df.drop(columns=['label_id']).rename(columns={'score': 'Good Matches', 'label': 'Label'})
                     
-                    # Menampilkan Kartu Visual
+                    # Menampilkan Kartu Visual (Paling Bawah)
                     cols_match = st.columns(len(df))
                     for i, row in df.iterrows():
                         with cols_match[i]:
@@ -190,9 +186,7 @@ with col_right:
                             st.markdown(f"**{row['Label'].upper()}**")
                             st.caption(f"Score: {row['Good Matches']} matches")
                             
-                            # Placeholder Visual 
                             if i == 0:
-                                # UKURAN BEST MATCH PREVIEW DIKECILKAN
                                 st.image(preprocessed_cv, caption="Best Match Preview", use_column_width=True)
                             else:
                                 st.markdown("*(Thumbnail Data Training tidak tersedia)*")
@@ -205,7 +199,7 @@ with col_right:
 
     # --- TAB 2: FULL EVALUATION (CM & METRICS) ---
     with tab_eval:
-        st.subheader("Evaluasi Penuh: Confusion Matrix")
+        st.subheader("Evaluasi Penuh: Confusion Matrix & Metrik")
         
         # --- DEFINISI DATA CM STATIS 20x20 ---
         cm_labels = list(LABEL_MAP.keys()) 
@@ -242,12 +236,9 @@ with col_right:
         
         st.dataframe(cm_df) # Tampilkan tabel CM
 
-        # Menampilkan Metrik Ringkas
+        # Menampilkan Metrik Ringkas (TIDAK ADA ANGKA ACCURACY ATAU PERSEN)
         st.markdown("---")
         st.subheader("Ringkasan Metrik Kinerja")
-        
-        # Menampilkan Metrik Utama (Wajib Dosen)
-        st.metric(label="Akurasi Model Test (Offline)", value=f"{ACCURACY_REPORTED:.2f}%", delta="Target Dosen: >80%", delta_color="inverse")
         
         st.markdown("""
         *Catatan: Nilai Akurasi, Precision, dan Recall terperinci dari CM ini tersedia di laporan.*
