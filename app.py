@@ -262,5 +262,7 @@ with col_right:
             'Metric': ['Average Precision', 'Average Recall', 'F1-Score'],
             'Value': [f"{33.00:.2f}%", f"{33.00:.2f}%", f"{32.50:.2f}%"]
         }
+        metrik_df = pd.DataFrame(metrik_data)
+        
         st.markdown("---")
 st.caption("Proyek ini menggunakan fitur ORB untuk mencocokkan aksara. Jika akurasi rendah, ini adalah batasan metode fitur lokal.")
