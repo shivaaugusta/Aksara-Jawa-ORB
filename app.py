@@ -216,7 +216,10 @@ with col_right:
                                 )
                             else:
                                 st.markdown("*(Thumbnail Data Training tidak tersedia)*")
-                    
+                except Exception as e:
+                st.error(f"❌ Terjadi error saat prediksi: {str(e)}")
+            finally:
+                pass  # Tutup try/except dengan benar
     # --- TAB 2: FULL EVALUATION (CM & METRICS) ---
     with tab_eval:
         st.subheader("Evaluasi Penuh: Confusion Matrix")
