@@ -15,7 +15,7 @@ INDEX_FILE = "orb_index.pkl.gz"
 LABEL_FILE = "label_map.json"
 ORB_N_FEATURES = 250
 RATIO_THRESH = 0.75
-ACCURACY_REPORTED = 39.68 
+ACCURACY_REPORTED = 39.68 # Akurasi Test Final Anda
 
 # Load model dan label saat aplikasi dimulai
 @st.cache_resource
@@ -79,6 +79,7 @@ def extract_orb(image):
 def predict_ratio(des_query, index, ratio_thresh, top_k_count):
     """Fungsi Prediksi menggunakan Rasio Lowe dan mengembalikan Rank 1 dan Top-K."""
     all_scores = []
+    max_possible_matches = ORB_N_FEATURES # Untuk normalisasi persentase
     
     for des_train, label_id in index:
         try:
@@ -90,7 +91,10 @@ def predict_ratio(des_query, index, ratio_thresh, top_k_count):
                 if m.distance < ratio_thresh * n.distance: 
                     good_matches += 1
             
-            all_scores.append({"score": good_matches, "label_id": label_id})
+            # HITUNG PERSENAN
+            score_percent = (good_matches / max_possible_matches) * 100 
+            
+            all_scores.append({"score": good_matches, "score_percent": score_percent, "label_id": label_id})
         except:
             continue
 
@@ -110,16 +114,19 @@ def predict_ratio(des_query, index, ratio_thresh, top_k_count):
 # --- 3. APLIKASI STREAMLIT UTAMA ---
 st.set_page_config(page_title="Identifikasi Aksara Jawa (ORB-Canny)", layout="wide")
 
+st.title("🔠 Identifikasi Aksara Jawa (Metode ORB)")
+st.caption(f"Proyek menggunakan {ORB_N_FEATURES} fitur ORB dengan Rasio Lowe.")
+
 # Struktur 2 Kolom Utama (Lebar Panel Kiri Diperkecil: [1] vs [3])
 col_left, col_right = st.columns([1, 3])
 
 # --- PANEL KIRI: UPLOAD & PENGATURAN ---
 with col_left:
-    # --- HEADER DIPINDAH KE SINI (Sesuai Permintaan Dosen) ---
+    # --- HEADER DIPINDAH KE SINI ---
     st.title("🔠 Identifikasi Aksara Jawa (Metode ORB)")
     st.caption(f"Proyek menggunakan {ORB_N_FEATURES} fitur ORB dengan Rasio Lowe.")
     st.markdown("---") 
-    # -----------------------------------------------------------
+    # ------------------------------------
 
     st.subheader("Upload Query Image")
     uploaded_file = st.file_uploader("", type=["png", "jpg", "jpeg"])
@@ -188,7 +195,12 @@ with col_right:
                     
                     df = pd.DataFrame(top_matches)
                     df['label'] = df['label_id'].apply(lambda x: ID_TO_LABEL[x])
-                    df = df.drop(columns=['label_id']).rename(columns={'score': 'Good Matches', 'label': 'Label'})
+                    
+                    # HITUNG DAN FORMAT PERSENTASE
+                    df['Score (%)'] = df['score_percent'].apply(lambda x: f"{x:.2f}%") 
+                    
+                    # Bersihkan Kolom
+                    df = df.drop(columns=['label_id', 'score_percent']).rename(columns={'score': 'Good Matches', 'label': 'Label'})
                     
                     # Menampilkan Kartu Visual
                     cols_match = st.columns(len(df))
@@ -196,7 +208,10 @@ with col_right:
                         with cols_match[i]:
                             st.markdown(f"**Rank {i+1}**")
                             st.markdown(f"**{row['Label'].upper()}**")
-                            st.caption(f"Score: {row['Good Matches']} matches")
+                            
+                            # Tampilkan Score Persen
+                            st.caption(f"**{row['Score (%)']}**") 
+                            st.caption(f"({row['Good Matches']} matches)") 
                             
                             if i == 0:
                                 st.image(preprocessed_cv, caption="Best Match Preview", use_column_width=True)
@@ -208,7 +223,7 @@ with col_right:
 
     # --- TAB 2: FULL EVALUATION (CM & METRICS) ---
     with tab_eval:
-        st.subheader("Evaluasi Penuh: Confusion Matrix")
+        st.subheader("Evaluasi Penuh: Confusion Matrix & Metrik")
         
         # --- DEFINISI DATA CM STATIS 20x20 ---
         cm_labels = list(LABEL_MAP.keys()) 
@@ -233,37 +248,32 @@ with col_right:
             [ 0,  3,  1,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  3,  0, 10,  0,  1], 
             [ 0,  0,  0,  0,  0,  0,  0,  3,  0,  0,  0,  0,  0,  1,  0,  7,  0,  0,  8,  0], 
             [ 0,  0,  0,  1,  0,  2,  1,  2,  1,  0,  0,  0,  0,  1,  0,  5,  0,  0,  1,  5]
-        ]
-        
-        cm_df = pd.DataFrame(data=np.array(cm_data_39_68), columns=cm_labels)
-        cm_df.insert(0, 'GT \ Pred', cm_labels) 
+            ]
+            
+            cm_df = pd.DataFrame(data=np.array(cm_data_39_68), columns=cm_labels)
+            cm_df.insert(0, 'GT \ Pred', cm_labels) 
 
-        st.markdown("""
-        #### 📊 Confusion Matrix (CM) Mentah 20x20
-        Angka-angka di bawah ini adalah hasil evaluasi penuh model pada data test:
-        """)
-        
-        st.dataframe(cm_df) # Tampilkan tabel CM
+            st.markdown("""
+            #### 📊 Confusion Matrix (CM) Mentah 20x20
+            Angka-angka di bawah ini adalah hasil evaluasi penuh model pada data test:
+            """)
+            
+            st.dataframe(cm_df) # Tampilkan tabel CM
 
-        # Menampilkan Metrik Ringkas (Ringkasan Kinerja)
-        st.markdown("---")
-        st.subheader("Ringkasan Metrik Kinerja")
+            # Menampilkan Metrik Ringkas
+            st.markdown("---")
+            st.subheader("Ringkasan Metrik Kinerja")
+            
+            # Menampilkan Akurasi Model Test (Wajib)
+            st.metric(label="Akurasi Model Test (Offline)", value=f"{ACCURACY_REPORTED:.2f}%", delta="Target Dosen: >80%", delta_color="inverse")
+            
+            # Tabel Metrik Tambahan (Wajib)
+            metrik_data = {
+                'Metric': ['Average Precision', 'Average Recall', 'F1-Score'],
+                'Value': [f"{33.00:.2f}%", f"{33.00:.2f}%", f"{32.50:.2f}%"]
+            }
+            df_metrik = pd.DataFrame(metrik_data)
+            st.table(df_metrik) 
 
-        # Menampilkan Akurasi Model Test (Wajib)
-        st.metric(
-            label="Akurasi Model Test (Offline)",
-            value=f"{ACCURACY_REPORTED:.2f}%",
-            delta="Target Dosen: >80%",
-            delta_color="inverse"
-        )
-
-        # Tabel Metrik Tambahan (Wajib)
-        metrik_data = {
-            'Metric': ['Average Precision', 'Average Recall', 'F1-Score'],
-            'Value': [f"{33.00:.2f}%", f"{33.00:.2f}%", f"{32.50:.2f}%"]
-        }
-        metrik_df = pd.DataFrame(metrik_data)
-        st.table(metrik_df)
-        
-        st.markdown("---")
+st.markdown("---")
 st.caption("Proyek ini menggunakan fitur ORB untuk mencocokkan aksara. Jika akurasi rendah, ini adalah batasan metode fitur lokal.")
