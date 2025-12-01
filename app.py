@@ -1,111 +1,121 @@
-# app.py (Final Deployment Version - Clean and Complete)
-
+## 💻 Aksara Jawa ID (ORB-Canny Feature Matching) - Refactored
 import streamlit as st
 import cv2
 import numpy as np
 import pickle
 import json
 import os
-import gzip 
+import gzip
 import pandas as pd
 from PIL import Image
 
 # --- 1. KONFIGURASI DAN LOAD MODEL ---
-INDEX_FILE = "orb_index.pkl.gz" 
+INDEX_FILE = "orb_index.pkl.gz"
 LABEL_FILE = "label_map.json"
 ORB_N_FEATURES = 250
 RATIO_THRESH = 0.75
-ACCURACY_REPORTED = 39.68 
+ACCURACY_REPORTED = 39.68
 
 # Load model dan label saat aplikasi dimulai
 @st.cache_resource
 def load_resources():
-    try:
-        with gzip.open(INDEX_FILE, "rb") as f: 
-            orb_index = pickle.load(f)
-            
-        with open(LABEL_FILE, "r") as f:
-            label_map = json.load(f)
+    try:
+        with gzip.open(INDEX_FILE, "rb") as f:
+            orb_index = pickle.load(f)
 
-        orb = cv2.ORB_create(nfeatures=ORB_N_FEATURES)
-        bf_knn = cv2.BFMatcher(cv2.NORM_HAMMING, crossCheck=False)
+        with open(LABEL_FILE, "r") as f:
+            label_map = json.load(f)
 
-        id_to_label = {v: k for k, v in label_map.items()}
+        orb = cv2.ORB_create(nfeatures=ORB_N_FEATURES)
+        bf_knn = cv2.BFMatcher(cv2.NORM_HAMMING, crossCheck=False)
 
-        return orb_index, label_map, id_to_label, orb, bf_knn
-    except FileNotFoundError:
-        return None, None, None, None, None
-    except Exception as e:
-        return None, None, None, None, None
+        id_to_label = {v: k for k, v in label_map.items()}
+
+        return orb_index, label_map, id_to_label, orb, bf_knn
+    except FileNotFoundError:
+        return None, None, None, None, None
+    except Exception as e:
+        # st.error(f"Error loading resources: {e}") # Tambahkan ini jika perlu debugging
+        return None, None, None, None, None
 
 ORB_INDEX, LABEL_MAP, ID_TO_LABEL, ORB, BF_KNN = load_resources()
 
 # --- 2. UTILITY FUNCTIONS ---
 
 def pil_to_cv2_gray(pil_img):
-    """Konversi PIL Image ke Grayscale OpenCV."""
-    rgb_img = np.array(pil_img.convert('RGB'))[:, :, ::-1]
-    gray = cv2.cvtColor(rgb_img, cv2.COLOR_BGR2GRAY)
-    return gray.astype(np.uint8)
+    """Konversi PIL Image ke Grayscale OpenCV."""
+    rgb_img = np.array(pil_img.convert('RGB'))[:, :, ::-1]
+    gray = cv2.cvtColor(rgb_img, cv2.COLOR_BGR2GRAY)
+    return gray.astype(np.uint8)
 
 def deskew(image):
-    """Meluruskan gambar (Deskewing)."""
-    coords = np.column_stack(np.where(image > 0))
-    if len(coords) < 10: return image
-    angle = cv2.minAreaRect(coords)[-1]
-    if angle < -45: angle = -(90 + angle)
-    else: angle = -angle
-    (h, w) = image.shape
-    M = cv2.getRotationMatrix2D((w//2, h//2), angle, 1.0)
-    rotated = cv2.warpAffine(image, M, (w, h), flags=cv2.INTER_CUBIC, borderMode=cv2.BORDER_REPLICATE)
-    return rotated
+    """Meluruskan gambar (Deskewing)."""
+    coords = np.column_stack(np.where(image > 0))
+    if len(coords) < 10:
+        return image
+    angle = cv2.minAreaRect(coords)[-1]
+    if angle < -45:
+        angle = -(90 + angle)
+    else:
+        angle = -angle
+    (h, w) = image.shape
+    M = cv2.getRotationMatrix2D((w//2, h//2), angle, 1.0)
+    rotated = cv2.warpAffine(image, M, (w, h), flags=cv2.INTER_CUBIC, borderMode=cv2.BORDER_REPLICATE)
+    return rotated
 
 def preprocess_image(pil_img):
-    """Menerapkan seluruh pipeline preprocessing."""
-    img = pil_to_cv2_gray(pil_img)
-    blur = cv2.GaussianBlur(img, (3, 3), 0)
-    th = cv2.adaptiveThreshold(blur, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY_INV, 25, 10)
-    deskewed = deskew(th)
-    final = cv2.resize(deskewed, (256, 256))
-    return final
+    """Menerapkan seluruh pipeline preprocessing."""
+    img = pil_to_cv2_gray(pil_img)
+    blur = cv2.GaussianBlur(img, (3, 3), 0)
+    th = cv2.adaptiveThreshold(blur, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY_INV, 25, 10)
+    deskewed = deskew(th)
+    final = cv2.resize(deskewed, (256, 256))
+    return final
 
 def extract_orb(image):
-    """Ekstraksi ORB dengan Canny Boosted."""
-    edges = cv2.Canny(image, 50, 150)
-    kp, des = ORB.detectAndCompute(edges, None)
-    if des is None: return None
-    return des.astype(np.uint8)
+    """Ekstraksi ORB dengan Canny Boosted."""
+    edges = cv2.Canny(image, 50, 150)
+    kp, des = ORB.detectAndCompute(edges, None)
+    if des is None:
+        return None
+    return des.astype(np.uint8)
 
 def predict_ratio(des_query, index, ratio_thresh, top_k_count):
-    """Fungsi Prediksi menggunakan Rasio Lowe dan mengembalikan Rank 1 dan Top-K."""
-    all_scores = []
-    
-    for des_train, label_id in index:
-        try:
-            matches = BF_KNN.knnMatch(des_query, des_train, k=2)
-            good_matches = 0
-            for pair in matches:
-                if len(pair) < 2: continue
-                m, n = pair[0], pair[1]
-                if m.distance < ratio_thresh * n.distance: 
-                    good_matches += 1
-            
-            all_scores.append({"score": good_matches, "label_id": label_id})
-        except:
-            continue
+    """Fungsi Prediksi menggunakan Rasio Lowe dan mengembalikan Rank 1 dan Top-K."""
+    all_scores = []
 
-    if not all_scores: return None, []
+    for des_train, label_id in index:
+        try:
+            matches = BF_KNN.knnMatch(des_query, des_train, k=2)
+            good_matches = 0
+            for pair in matches:
+                if len(pair) < 2:
+                    continue
+                m, n = pair[0], pair[1]
+                if m.distance < ratio_thresh * n.distance:
+                    good_matches += 1
 
-    # 1. Ambil Top Match Rank 1 (Skor Tertinggi)
-    top_results = sorted(all_scores, key=lambda x: x["score"], reverse=True)
-    
-    predicted_label_id = top_results[0]["label_id"]
-    final_prediction = ID_TO_LABEL[predicted_label_id]
-    
-    # Ambil Top-K dari slider
-    top_k_results = top_results[:top_k_count] 
-    
-    return final_prediction, top_k_results 
+            # Hitung persentase good matches
+            # Diasumsikan des_query adalah sumber. Persentase = (Good Matches / Total Query Descriptors)
+            score_percent = (good_matches / len(des_query)) * 100
+
+            all_scores.append({"score": good_matches, "score_percent": score_percent, "label_id": label_id})
+        except:
+            continue
+
+    if not all_scores:
+        return None, []
+
+    # 1. Ambil Top Match Rank 1 (Skor Tertinggi)
+    top_results = sorted(all_scores, key=lambda x: x["score"], reverse=True)
+
+    predicted_label_id = top_results[0]["label_id"]
+    final_prediction = ID_TO_LABEL[predicted_label_id]
+
+    # Ambil Top-K dari slider
+    top_k_results = top_results[:top_k_count]
+
+    return final_prediction, top_k_results
 
 # --- 3. APLIKASI STREAMLIT UTAMA ---
 st.set_page_config(page_title="Identifikasi Aksara Jawa (ORB-Canny)", layout="wide")
@@ -115,39 +125,39 @@ col_left, col_right = st.columns([1, 3])
 
 # --- PANEL KIRI: UPLOAD & PENGATURAN ---
 with col_left:
-    # --- HEADER DIPINDAH KE SINI (Sesuai Permintaan Dosen) ---
-    st.title("🔠 Identifikasi Aksara Jawa (Metode ORB)")
-    st.caption(f"Proyek menggunakan {ORB_N_FEATURES} fitur ORB dengan Rasio Lowe.")
-    st.markdown("---") 
-    # -----------------------------------------------------------
+    # --- HEADER DIPINDAH KE SINI (Sesuai Permintaan Dosen) ---
+    st.title("🔠 Identifikasi Aksara Jawa (Metode ORB)")
+    st.caption(f"Proyek menggunakan {ORB_N_FEATURES} fitur ORB dengan Rasio Lowe.")
+    st.markdown("---")
+    # -----------------------------------------------------------
 
-    st.subheader("Upload Query Image")
-    uploaded_file = st.file_uploader("", type=["png", "jpg", "jpeg"])
+    st.subheader("Upload Query Image")
+    uploaded_file = st.file_uploader("", type=["png", "jpg", "jpeg"])
 
-    st.markdown("---")
-    st.subheader("Pengaturan Pencocokan")
+    st.markdown("---")
+    st.subheader("Pengaturan Pencocokan")
 
-    # SLIDER LOWE RATIO (Parameter aktif)
-    lowe_ratio = st.slider("Lowe ratio", min_value=0.1, max_value=1.0, value=0.75, step=0.01)
-    
-    # SLIDER TOP-K (Parameter aktif)
-    top_k = st.slider("Top-K", min_value=1, max_value=20, value=5, step=1)
+    # SLIDER LOWE RATIO (Parameter aktif)
+    lowe_ratio = st.slider("Lowe ratio", min_value=0.1, max_value=1.0, value=RATIO_THRESH, step=0.01)
 
-    # UNKNOWN THRESHOLD (Dipertahankan untuk replikasi UI)
-    unknown_threshold = st.slider("Unknown threshold", min_value=0.01, max_value=0.5, value=0.05, step=0.01)
-    
-    st.button("Submit") # Submit button
-    
+    # SLIDER TOP-K (Parameter aktif)
+    top_k = st.slider("Top-K", min_value=1, max_value=20, value=5, step=1)
+
+    # UNKNOWN THRESHOLD (Dipertahankan untuk replikasi UI)
+    unknown_threshold = st.slider("Unknown threshold", min_value=0.01, max_value=0.5, value=0.05, step=0.01)
+
+    st.button("Submit") # Submit button
+
 # --- PANEL KANAN: RESULTS DAN PREVIEW ---
 with col_right:
-    
+
     # Membuat Tabs untuk memisahkan Tampilan Hasil dan Evaluasi Penuh
     tab_pred, tab_eval = st.tabs(["✨ LIVE PREDICTION & MATCHES", "📊 FULL EVALUATION (CM & METRICS)"])
-    
+
     # --- TAB 1: LIVE PREDICTION & MATCHES ---
     with tab_pred:
         st.subheader("Results")
-        
+
         if uploaded_file is not None:
             if ORB_INDEX is None:
                 st.error("🚨 Model tidak berhasil dimuat! Harap refresh dan pastikan file model ada.")
@@ -157,55 +167,58 @@ with col_right:
                 pil_img = Image.open(uploaded_file)
                 preprocessed_cv = preprocess_image(pil_img)
                 des_query = extract_orb(preprocessed_cv)
-                
+
                 # Tampilan Preview: Gabungan Gambar Asli & Proses (COMPACT HORIZONTAL)
                 col_preview, col_proc, col_output = st.columns([1, 1, 1.5])
-                
+
                 with col_preview:
                     st.markdown("**Query Preview**")
-                    st.image(pil_img, use_column_width=False, width=180) 
-                
+                    st.image(pil_img, use_column_width=False, width=180)
+
                 with col_proc:
                     st.markdown("**Visualisasi Preprocessing**")
-                    st.image(preprocessed_cv, caption="Threshold + Deskew + Resize", use_column_width=False, width=180) 
-                
+                    st.image(preprocessed_cv, caption="Threshold + Deskew + Resize", use_column_width=False, width=180)
+
                 with col_output:
                     st.markdown("**Prediction**")
-                    
+
                     if des_query is not None and len(des_query) > 0:
-                        final_prediction, top_matches = predict_ratio(des_query, ORB_INDEX, lowe_ratio, top_k) 
+                        final_prediction, top_matches = predict_ratio(des_query, ORB_INDEX, lowe_ratio, top_k)
                         st.success(f"**Predicted label:** {final_prediction.upper()}")
                         st.info(f"Ditemukan {len(des_query)} deskriptor ORB.")
                     else:
-                        st.warning("⚠️ Gagal mengekstrak fitur ORB.")
-                
+                        st.warning("⚠️ Gagal mengekstrak fitur ORB. Coba gambar lain.")
+
                 st.markdown("---") # Pemisah setelah gambar
-                
+
                 if des_query is not None and len(des_query) > 0:
-                    
+
                     # --- TAMPILAN TOP MATCHES DETAIL (GRID/KARTU REPLIKA) ---
                     st.subheader("Top Matches Detail")
-                    
+
                     df = pd.DataFrame(top_matches)
                     df['label'] = df['label_id'].apply(lambda x: ID_TO_LABEL[x])
-                    
-                    # HITUNG DAN TAMBAH KOLOM PERSENTASE BARU
-                    df['Score (%)'] = df['score_percent'].apply(lambda x: f"{x:.2f}%") 
-                    
+
                     # Bersihkan Kolom
-                    df = df.drop(columns=['label_id', 'score_percent']).rename(columns={'score': 'Good Matches', 'label': 'Label'})
-                    
+                    df = df.drop(columns=['label_id']).rename(columns={'score': 'Good Matches', 'label': 'Label'})
+
+                    # Tambahkan Kolom Score Persen di posisi kedua
+                    df.insert(2, 'Score (%)', df['score_percent'].apply(lambda x: f"{x:.2f}%"))
+                    df = df.drop(columns=['score_percent']) # Hapus kolom mentah
+
                     # Menampilkan Kartu Visual
                     cols_match = st.columns(len(df))
                     for i, row in df.iterrows():
                         with cols_match[i]:
                             st.markdown(f"**Rank {i+1}**")
                             st.markdown(f"**{row['Label'].upper()}**")
-                            
+
                             # Tampilkan Score Persen
-                            st.caption(f"**{row['Score (%)']}**") 
-                            st.caption(f"({row['Good Matches']} matches)") 
-                            
+                            st.caption(f"**{row['Score (%)']}**")
+                            st.caption(f"({row['Good Matches']} matches)")
+
+                            # Tampilkan Best Match Preview (Mockup/Visualisasi)
+                            # NOTE: Saat ini hanya menampilkan gambar preprocessing query
                             if i == 0:
                                 st.image(preprocessed_cv, caption="Best Match Preview", use_column_width=True)
                             else:
@@ -213,65 +226,66 @@ with col_right:
 
             except Exception as e:
                 st.error(f"Terjadi kesalahan saat memproses gambar: {e}")
+
 # --- TAB 2: FULL EVALUATION (CM & METRICS) ---
-    with tab_eval:
-        st.subheader("Evaluasi Penuh: Confusion Matrix")
-        
-        # --- DEFINISI DATA CM STATIS 20x20 ---
-        cm_labels = list(LABEL_MAP.keys()) 
-        cm_data_39_68 = [
-            [ 4,  0,  0,  0,  0,  1,  0,  3,  0,  0,  0,  0,  8,  0,  0,  1,  0,  0,  0,  2], 
-            [ 0, 12,  0,  0,  0,  0,  0,  2,  0,  0,  0,  0,  0,  0,  0,  4,  0,  0,  1,  0], 
-            [ 0,  0, 14,  0,  0,  0,  0,  4,  0,  0,  0,  0,  0,  0,  0,  1,  0,  0,  0,  0], 
-            [ 0,  0,  0, 14,  0,  0,  0,  1,  0,  2,  0,  0,  0,  0,  0,  1,  0,  0,  1,  0], 
-            [ 2,  0,  0,  0,  1,  1,  0,  8,  0,  1,  0,  0,  1,  0,  0,  4,  0,  0,  0,  1], 
-            [ 1,  0,  0,  0,  0,  4,  0,  4,  1,  0,  0,  0,  0,  0,  0,  9,  0,  0,  0,  0], 
-            [ 0,  0,  0,  0,  0,  0,  9,  2,  0,  0,  0,  0,  0,  0,  0,  6,  0,  0,  1,  0], 
-            [ 0,  0,  0,  0,  0,  0,  0, 17,  0,  0,  1,  0,  1,  0,  0,  0,  0,  0,  0,  0], 
-            [ 0,  0,  0,  0,  0,  3,  0,  7,  3,  0,  2,  0,  0,  0,  0,  2,  0,  0,  0,  2], 
-            [ 0,  1,  0,  1,  0,  0,  0,  0,  1,  9,  0,  0,  0,  1,  0,  4,  0,  0,  2,  1], 
-            [ 0,  0,  0,  0,  0,  0,  0, 16,  0,  0,  3,  0,  0,  0,  0,  0,  0,  0,  0,  0], 
-            [ 5,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  7,  2,  0,  0,  3,  0,  1,  0,  1], 
-            [ 0,  1,  0,  0,  0,  0,  0,  4,  0,  0,  0,  1, 11,  0,  0,  2,  0,  0,  0,  0], 
-            [ 0,  0,  0,  0,  0,  1,  0,  4,  0,  0,  0,  0,  0,  0,  0, 13,  0,  0,  0,  1], 
-            [ 3,  2,  0,  0,  0,  1,  0,  2,  0,  3,  0,  0,  2,  0,  0,  4,  0,  0,  2,  0], 
-            [ 0,  4,  0,  0,  0,  0,  0,  1,  0,  0,  0,  0,  0,  0,  0, 13,  0,  0,  0,  1], 
-            [ 0,  0,  0,  0,  0,  0,  0,  6,  0,  0,  0,  0,  0,  1,  0,  5,  6,  0,  1,  0], 
-            [ 0,  3,  1,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  3,  0, 10,  0,  1], 
-            [ 0,  0,  0,  0,  0,  0,  0,  3,  0,  0,  0,  0,  0,  1,  0,  7,  0,  0,  8,  0], 
-            [ 0,  0,  0,  1,  0,  2,  1,  2,  1,  0,  0,  0,  0,  1,  0,  5,  0,  0,  1,  5]
-        ]
-        
-        cm_df = pd.DataFrame(data=np.array(cm_data_39_68), columns=cm_labels)
-        cm_df.insert(0, 'GT \ Pred', cm_labels) 
+    with tab_eval:
+        st.subheader("Evaluasi Penuh: Confusion Matrix")
 
-        st.markdown("""
-        #### 📊 Confusion Matrix (CM) Mentah 20x20
-        Angka-angka di bawah ini adalah hasil evaluasi penuh model pada data test:
-        """)
-        
-        st.dataframe(cm_df) # Tampilkan tabel CM
+        # --- DEFINISI DATA CM STATIS 20x20 ---
+        cm_labels = list(LABEL_MAP.keys())
+        cm_data_39_68 = [
+            [ 4,  0,  0,  0,  0,  1,  0,  3,  0,  0,  0,  0,  8,  0,  0,  1,  0,  0,  0,  2],
+            [ 0, 12,  0,  0,  0,  0,  0,  2,  0,  0,  0,  0,  0,  0,  0,  4,  0,  0,  1,  0],
+            [ 0,  0, 14,  0,  0,  0,  0,  4,  0,  0,  0,  0,  0,  0,  0,  1,  0,  0,  0,  0],
+            [ 0,  0,  0, 14,  0,  0,  0,  1,  0,  2,  0,  0,  0,  0,  0,  1,  0,  0,  1,  0],
+            [ 2,  0,  0,  0,  1,  1,  0,  8,  0,  1,  0,  0,  1,  0,  0,  4,  0,  0,  0,  1],
+            [ 1,  0,  0,  0,  0,  4,  0,  4,  1,  0,  0,  0,  0,  0,  0,  9,  0,  0,  0,  0],
+            [ 0,  0,  0,  0,  0,  0,  9,  2,  0,  0,  0,  0,  0,  0,  0,  6,  0,  0,  1,  0],
+            [ 0,  0,  0,  0,  0,  0,  0, 17,  0,  0,  1,  0,  1,  0,  0,  0,  0,  0,  0,  0],
+            [ 0,  0,  0,  0,  0,  3,  0,  7,  3,  0,  2,  0,  0,  0,  0,  2,  0,  0,  0,  2],
+            [ 0,  1,  0,  1,  0,  0,  0,  0,  1,  9,  0,  0,  0,  1,  0,  4,  0,  0,  2,  1],
+            [ 0,  0,  0,  0,  0,  0,  0, 16,  0,  0,  3,  0,  0,  0,  0,  0,  0,  0,  0,  0],
+            [ 5,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  7,  2,  0,  0,  3,  0,  1,  0,  1],
+            [ 0,  1,  0,  0,  0,  0,  0,  4,  0,  0,  0,  1, 11,  0,  0,  2,  0,  0,  0,  0],
+            [ 0,  0,  0,  0,  0,  1,  0,  4,  0,  0,  0,  0,  0,  0,  0, 13,  0,  0,  0,  1],
+            [ 3,  2,  0,  0,  0,  1,  0,  2,  0,  3,  0,  0,  2,  0,  0,  4,  0,  0,  2,  0],
+            [ 0,  4,  0,  0,  0,  0,  0,  1,  0,  0,  0,  0,  0,  0,  0, 13,  0,  0,  0,  1],
+            [ 0,  0,  0,  0,  0,  0,  0,  6,  0,  0,  0,  0,  0,  1,  0,  5,  6,  0,  1,  0],
+            [ 0,  3,  1,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  3,  0, 10,  0,  1],
+            [ 0,  0,  0,  0,  0,  0,  0,  3,  0,  0,  0,  0,  0,  1,  0,  7,  0,  0,  8,  0],
+            [ 0,  0,  0,  1,  0,  2,  1,  2,  1,  0,  0,  0,  0,  1,  0,  5,  0,  0,  1,  5]
+        ]
 
-        # Menampilkan Metrik Ringkas (Ringkasan Kinerja)
-        st.markdown("---")
-        st.subheader("Ringkasan Metrik Kinerja")
-        
-         # Menampilkan Akurasi Model Test (Wajib)
-        st.metric(
-            label="Akurasi Model Test (Offline)",
-            value=f"{ACCURACY_REPORTED:.2f}%",
-            delta="Target Dosen: >80%",
-            delta_color="inverse"
-        )
+        cm_df = pd.DataFrame(data=np.array(cm_data_39_68), columns=cm_labels)
+        cm_df.insert(0, 'GT \\ Pred', cm_labels)
 
-        # Tabel Metrik Tambahan (Wajib)
-        metrik_data = {
-            'Metric': ['Average Precision', 'Average Recall', 'F1-Score'],
-            'Value': [f"{33.00:.2f}%", f"{33.00:.2f}%", f"{32.50:.2f}%"]
-        }
-        metrik_df = pd.DataFrame(metrik_data)
+        st.markdown("""
+        #### 📊 Confusion Matrix (CM) Mentah 20x20
+        Angka-angka di bawah ini adalah hasil evaluasi penuh model pada data test:
+        """)
 
-        st.table(metrik_df) 
+        st.dataframe(cm_df) # Tampilkan tabel CM
+
+        # Menampilkan Metrik Ringkas (Ringkasan Kinerja)
+        st.markdown("---")
+        st.subheader("Ringkasan Metrik Kinerja")
+
+        # Menampilkan Akurasi Model Test (Wajib)
+        st.metric(
+            label="Akurasi Model Test (Offline)",
+            value=f"{ACCURACY_REPORTED:.2f}%",
+            delta="Target Dosen: >80%",
+            delta_color="inverse"
+        )
+
+        # Tabel Metrik Tambahan (Wajib)
+        metrik_data = {
+            'Metric': ['Average Precision', 'Average Recall', 'F1-Score'],
+            'Value': [f"{33.00:.2f}%", f"{33.00:.2f}%", f"{32.50:.2f}%"]
+        }
+        metrik_df = pd.DataFrame(metrik_data)
+
+        st.table(metrik_df)
 
 st.markdown("---")
 st.caption("Proyek ini menggunakan fitur ORB untuk mencocokkan aksara. Jika akurasi rendah, ini adalah batasan metode fitur lokal.")
