@@ -185,27 +185,38 @@ with col_right:
                     
                     # --- TAMPILAN TOP MATCHES DETAIL (GRID/KARTU REPLIKA) ---
                     st.subheader("Top Matches Detail")
-                    
+
                     df = pd.DataFrame(top_matches)
                     df['label'] = df['label_id'].apply(lambda x: ID_TO_LABEL[x])
-                    df = df.drop(columns=['label_id']).rename(columns={'score': 'Good Matches', 'label': 'Label'})
+                    
+                    # Rename kolom
+                    df = df.drop(columns=['label_id']).rename(columns={
+                        'score': 'Good Matches',
+                        'score_percent': 'Score (%)',
+                        'label': 'Label'
+                    })
+                    
+                    # Format persentase 2 decimal
+                    df['Score (%)'] = df['Score (%)'].map(lambda x: f"{x:.2f}%")
                     
                     # Menampilkan Kartu Visual
-                    cols_match = st.columns(len(df))
+                    cols_match = st.columns(min(len(df), 5))  # Maks 5 kolom biar tidak hancur layout
                     for i, row in df.iterrows():
-                        with cols_match[i]:
+                        with cols_match[i % 5]:  # Auto wrap per 5 kolom
                             st.markdown(f"**Rank {i+1}**")
                             st.markdown(f"**{row['Label'].upper()}**")
-                            st.caption(f"Score: {row['Good Matches']} matches")
-                            
+                            st.caption(f"Matches: {row['Good Matches']}")
+                            st.caption(f"Score: {row['Score (%)']}")
+                    
                             if i == 0:
-                                st.image(preprocessed_cv, caption="Best Match Preview", use_column_width=True)
+                                st.image(
+                                    preprocessed_cv,
+                                    caption="Best Match Preview",
+                                    use_column_width=True
+                                )
                             else:
                                 st.markdown("*(Thumbnail Data Training tidak tersedia)*")
-
-            except Exception as e:
-                st.error(f"Terjadi kesalahan saat memproses gambar: {e}")
-
+                    
     # --- TAB 2: FULL EVALUATION (CM & METRICS) ---
     with tab_eval:
         st.subheader("Evaluasi Penuh: Confusion Matrix")
