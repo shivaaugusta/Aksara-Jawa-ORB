@@ -15,21 +15,24 @@ INDEX_FILE = "orb_index.pkl.gz"
 LABEL_FILE = "label_map.json"
 ORB_N_FEATURES = 250
 RATIO_THRESH = 0.75
-ACCURACY_REPORTED = 39.68 
+ACCURACY_REPORTED = 39.68 # Akurasi Test Final Anda
 
 # Load model dan label saat aplikasi dimulai
 @st.cache_resource
 def load_resources():
     try:
+        # MEMUAT FILE TERKOMPRESI MENGGUNAKAN GZIP
         with gzip.open(INDEX_FILE, "rb") as f: 
             orb_index = pickle.load(f)
             
         with open(LABEL_FILE, "r") as f:
             label_map = json.load(f)
 
+        # Inisialisasi ORB dan Matcher
         orb = cv2.ORB_create(nfeatures=ORB_N_FEATURES)
         bf_knn = cv2.BFMatcher(cv2.NORM_HAMMING, crossCheck=False)
 
+        # Inversi label map (dari ID ke Nama Aksara)
         id_to_label = {v: k for k, v in label_map.items()}
 
         return orb_index, label_map, id_to_label, orb, bf_knn
@@ -38,7 +41,7 @@ def load_resources():
     except Exception as e:
         return None, None, None, None, None
 
-ORB_INDEX, LABEL_MAP, ID_TO_LABEL, ORB, BF_KNN = load_resources()
+ORB_INDEX, LABEL_MAP, ID_TO_ID_LABEL, ORB, BF_KNN = load_resources()
 
 # --- 2. UTILITY FUNCTIONS ---
 
@@ -96,11 +99,13 @@ def predict_ratio(des_query, index, ratio_thresh, top_k_count):
 
     if not all_scores: return None, []
 
+    # 1. Ambil Top Match Rank 1 (Skor Tertinggi)
     top_results = sorted(all_scores, key=lambda x: x["score"], reverse=True)
     
     predicted_label_id = top_results[0]["label_id"]
     final_prediction = ID_TO_LABEL[predicted_label_id]
     
+    # Ambil Top-K dari slider
     top_k_results = top_results[:top_k_count] 
     
     return final_prediction, top_k_results 
@@ -108,14 +113,16 @@ def predict_ratio(des_query, index, ratio_thresh, top_k_count):
 # --- 3. APLIKASI STREAMLIT UTAMA ---
 st.set_page_config(page_title="Identifikasi Aksara Jawa (ORB-Canny)", layout="wide")
 
-st.title("🔠 Identifikasi Aksara Jawa (Metode ORB)")
-st.caption(f"Proyek menggunakan {ORB_N_FEATURES} fitur ORB dengan Rasio Lowe.")
-
 # Struktur 2 Kolom Utama (Lebar Panel Kiri Diperkecil: [1] vs [3])
 col_left, col_right = st.columns([1, 3])
 
 # --- PANEL KIRI: UPLOAD & PENGATURAN ---
 with col_left:
+    # MEMADATKAN HEADER DI SINI
+    st.subheader("🔠 Identifikasi Aksara Jawa (Metode ORB)")
+    st.caption(f"Proyek menggunakan {ORB_N_FEATURES} fitur ORB dengan Rasio Lowe.")
+    st.markdown("---") 
+
     st.subheader("Upload Query Image")
     uploaded_file = st.file_uploader("", type=["png", "jpg", "jpeg"])
 
@@ -133,7 +140,7 @@ with col_left:
     
     st.button("Submit") # Submit button
     
-# --- PANEL KANAN: RESULTS DAN PREVIEW (Menggunakan Tabs) ---
+# --- PANEL KANAN: RESULTS DAN PREVIEW ---
 with col_right:
     
     # Membuat Tabs untuk memisahkan Tampilan Hasil dan Evaluasi Penuh
@@ -158,12 +165,10 @@ with col_right:
                 
                 with col_preview:
                     st.markdown("**Query Preview**")
-                    # UKURAN GAMBAR DIKECILKAN
                     st.image(pil_img, use_column_width=False, width=180) 
                 
                 with col_proc:
                     st.markdown("**Visualisasi Preprocessing**")
-                    # UKURAN GAMBAR DIKECILKAN
                     st.image(preprocessed_cv, caption="Threshold + Deskew + Resize", use_column_width=False, width=180) 
                 
                 with col_output:
@@ -205,7 +210,7 @@ with col_right:
 
     # --- TAB 2: FULL EVALUATION (CM & METRICS) ---
     with tab_eval:
-        st.subheader("Evaluasi Penuh: Confusion Matrix & Metrik")
+        st.subheader("Evaluasi Penuh: Confusion Matrix")
         
         # --- DEFINISI DATA CM STATIS 20x20 ---
         cm_labels = list(LABEL_MAP.keys()) 
@@ -242,7 +247,7 @@ with col_right:
         
         st.dataframe(cm_df) # Tampilkan tabel CM
 
-        # Menampilkan Metrik Ringkas (TIDAK ADA ANGKA ACCURACY ATAU PERSEN)
+        # Menampilkan Metrik Ringkas (Ringkasan Kinerja)
         st.markdown("---")
         st.subheader("Ringkasan Metrik Kinerja")
         
